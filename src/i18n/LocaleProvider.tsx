@@ -25,7 +25,7 @@ export function richMessage(message: string, ...values: ReactNode[]) {
 }
 
 function getBrowserLocale() {
-  return resolveLocale(navigator.languages?.length ? navigator.languages : [navigator.language]);
+  return resolveLocale([navigator.language, ...(navigator.languages ?? [])]);
 }
 
 function subscribe(onChange: () => void) {
