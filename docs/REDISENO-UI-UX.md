@@ -7,7 +7,7 @@ El cliente pidió dos cosas:
 1. Que la interfaz deje de parecer una copia de las herramientas en las que se inspiró.
 2. Que, al unir dos herramientas en una, la experiencia quede mejor que la de cada una por separado.
 
-Antes de este cambio, la pantalla de paleta replicaba casi pieza por pieza un generador de paletas conocido: columnas de color a sangre de borde a borde, el código HEX grande y centrado abajo, y los botones de bloquear, ajustar y copiar en el centro. Hasta la interfaz y los metadatos decían «Modo Coolors» y «al estilo Coolors». El resto de la app tenía el aspecto genérico de las plantillas SaaS: gris pizarra oscuro sobre blanco, Plus Jakarta Sans con DM Sans, etiquetas en mayúsculas por todas partes y secciones numeradas 01, 02, 03.
+Antes de este cambio, la pantalla de paleta seguía el patrón más repetido entre los generadores de paletas: columnas de color a sangre de borde a borde, el código HEX grande y centrado abajo, y los botones de bloquear, ajustar y copiar en el centro. El resto de la app tenía el aspecto genérico de las plantillas SaaS: gris pizarra oscuro sobre blanco, Plus Jakarta Sans con DM Sans, etiquetas en mayúsculas por todas partes y secciones numeradas 01, 02, 03.
 
 Además había problemas de uso:
 
@@ -106,7 +106,7 @@ Los tokens de la interfaz están definidos en `src/index.css` dentro de `@theme`
 
 | Archivo | Cambio |
 | --- | --- |
-| `src/components/PaletteBoard.tsx` | Nuevo. Reemplaza a `CoolorsGenerator.tsx`. |
+| `src/components/PaletteBoard.tsx` | Nuevo. Reemplaza al generador de paletas anterior. |
 | `src/components/ExportPanel.tsx` | Nuevo. Reemplaza a `ExportCodeView.tsx` y a las pestañas de código de `PreviewCanvas`. |
 | `src/components/Toast.tsx` | Nuevo. Avisos breves. |
 | `src/components/TopBar.tsx` | Indicador de pasos, isotipo en vivo y botón Compartir. |
