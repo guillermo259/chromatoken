@@ -210,7 +210,7 @@ export const ContrastPanel: React.FC<ContrastPanelProps> = ({
           <div className="flex items-center gap-3 rounded-lg bg-panel p-3">
             <ShieldCheck className="h-5 w-5 shrink-0" />
             <p className="text-[13px] leading-snug">
-              Todo cumple. Los colores nuevos que generes también se ajustan para cumplir {report.level}.
+              Todo cumple con el nivel {report.level} tanto en modo claro como oscuro.
             </p>
           </div>
         ) : (

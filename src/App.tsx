@@ -143,11 +143,8 @@ export default function App() {
       notify('Todos los colores están bloqueados');
       return;
     }
-    // New colors are nudged (lightness only) until their real pairs meet the chosen WCAG level
-    commitPalette(
-      enforceContrast(generateHarmoniousPalette(state.colors, state.harmonyMode), contrastLevel)
-    );
-  }, [state.colors, state.harmonyMode, contrastLevel, commitPalette, notify]);
+    commitPalette(generateHarmoniousPalette(state.colors, state.harmonyMode));
+  }, [state.colors, state.harmonyMode, commitPalette, notify]);
 
   const handleApplyContrastFix = useCallback(
     (role: ColorRole, hex: string) => {

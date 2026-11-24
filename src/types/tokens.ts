@@ -15,7 +15,9 @@ export type HarmonyMode =
   | 'curated'
   | 'analogous'
   | 'complementary'
+  | 'split-complementary'
   | 'triadic'
+  | 'tetradic'
   | 'monochromatic'
   | 'high-contrast';
 

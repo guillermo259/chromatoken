@@ -68,12 +68,14 @@ interface PaletteBoardProps {
 }
 
 const HARMONY_OPTIONS: Array<{ value: HarmonyMode; label: string; hint: string }> = [
-  { value: 'curated', label: 'Curada', hint: 'Combinaciones equilibradas para producto' },
-  { value: 'analogous', label: 'Análoga', hint: 'Tonos vecinos en el círculo cromático' },
-  { value: 'complementary', label: 'Complementaria', hint: 'Tonos opuestos, máximo contraste de matiz' },
-  { value: 'triadic', label: 'Triádica', hint: 'Tres tonos repartidos a 120°' },
+  { value: 'curated', label: 'Curada', hint: 'Combinaciones equilibradas en OKLCH para producto' },
+  { value: 'analogous', label: 'Análoga', hint: 'Tonos vecinos en el círculo OKLCH' },
+  { value: 'complementary', label: 'Complementaria', hint: 'Tonos opuestos a 180° en OKLCH' },
+  { value: 'split-complementary', label: 'Comp. dividida', hint: 'Tono base + dos opuestos suaves (150° y 210°)' },
+  { value: 'triadic', label: 'Triádica', hint: 'Tres tonos equidistantes a 120°' },
+  { value: 'tetradic', label: 'Cuadrática', hint: 'Cuatro puntos repartidos cada 90°' },
   { value: 'monochromatic', label: 'Monocromática', hint: 'Un solo matiz en distintas luminosidades' },
-  { value: 'high-contrast', label: 'Alto contraste', hint: 'Prioriza legibilidad y diferencia de luminosidad' },
+  { value: 'high-contrast', label: 'Alto contraste', hint: 'Base neutra profunda o clara + acento intenso' },
 ];
 
 const INK = '#0F172A';

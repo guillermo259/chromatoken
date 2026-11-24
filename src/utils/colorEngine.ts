@@ -135,6 +135,103 @@ export function hslToHex(h: number, s: number, l: number): string {
   return rgbToHex(r, g, b);
 }
 
+/* -------------------------------------------------------------------------- */
+/*  OKLCH Perceptual Color Space (CSS Color Level 4)                          */
+/* -------------------------------------------------------------------------- */
+
+function srgbToLinear(c: number): number {
+  const v = c / 255;
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+}
+
+function linearToSrgb(v: number): number {
+  const clamped = Math.max(0, Math.min(1, v));
+  const srgb =
+    clamped <= 0.0031308
+      ? clamped * 12.92
+      : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+  return Math.round(srgb * 255);
+}
+
+function linearSrgbToOklab(r: number, g: number, b: number): { L: number; a: number; b: number } {
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+
+  return {
+    L: 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    a: 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    b: 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  };
+}
+
+function oklabToLinearSrgb(L: number, a: number, b: number): { r: number; g: number; b: number } {
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+  const s_ = L - 0.0894841775 * a - 1.291485548 * b;
+
+  const l = l_ * l_ * l_;
+  const m = m_ * m_ * m_;
+  const s = s_ * s_ * s_;
+
+  return {
+    r: +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    g: -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    b: -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  };
+}
+
+function inLinearGamut(rgb: { r: number; g: number; b: number }): boolean {
+  const eps = -0.0005;
+  const max = 1.0005;
+  return rgb.r >= eps && rgb.r <= max && rgb.g >= eps && rgb.g <= max && rgb.b >= eps && rgb.b <= max;
+}
+
+export function hexToOklch(hex: string): { l: number; c: number; h: number } {
+  const { r, g, b } = hexToRgb(hex);
+  const lab = linearSrgbToOklab(srgbToLinear(r), srgbToLinear(g), srgbToLinear(b));
+  const c = Math.sqrt(lab.a * lab.a + lab.b * lab.b);
+  let h = (Math.atan2(lab.b, lab.a) * 180) / Math.PI;
+  if (h < 0) h += 360;
+  return {
+    l: Math.max(0, Math.min(1, lab.L)),
+    c,
+    h: c < 0.0001 ? 0 : h,
+  };
+}
+
+/**
+ * Converts OKLCH (L in 0..1, C in 0..0.37, H in 0..360) to HEX, preserving exact
+ * perceptual lightness and hue while binary-clamping chroma to the sRGB gamut.
+ */
+export function oklchToHex(l: number, c: number, h: number): string {
+  const clampedL = Math.max(0.02, Math.min(0.99, l));
+  const clampedC = Math.max(0, c);
+  const hueRad = ((((h % 360) + 360) % 360) * Math.PI) / 180;
+  const cosH = Math.cos(hueRad);
+  const sinH = Math.sin(hueRad);
+
+  const probe = (chroma: number) =>
+    oklabToLinearSrgb(clampedL, chroma * cosH, chroma * sinH);
+
+  let rgb = probe(clampedC);
+  if (!inLinearGamut(rgb)) {
+    let low = 0;
+    let high = clampedC;
+    for (let i = 0; i < 16; i++) {
+      const mid = (low + high) / 2;
+      if (inLinearGamut(probe(mid))) {
+        low = mid;
+      } else {
+        high = mid;
+      }
+    }
+    rgb = probe(low);
+  }
+
+  return rgbToHex(linearToSrgb(rgb.r), linearToSrgb(rgb.g), linearToSrgb(rgb.b));
+}
+
 export function getRelativeLuminance(hex: string): number {
   const { r, g, b } = hexToRgb(hex);
   const toLinear = (v: number) => {
@@ -165,34 +262,33 @@ export function getWcagLabel(ratio: number): 'AAA' | 'AA' | 'AA Large' | 'Bajo' 
   return 'Bajo';
 }
 
-const TARGET_LIGHTNESS: Record<ShadeStep, number> = {
-  50: 97,
-  100: 93,
-  200: 85,
-  300: 74,
-  400: 62,
-  500: 50,
-  600: 40,
-  700: 31,
-  800: 22,
-  900: 15,
-  950: 9,
+const TARGET_OKLCH_L: Record<ShadeStep, number> = {
+  50: 0.975,
+  100: 0.94,
+  200: 0.875,
+  300: 0.785,
+  400: 0.695,
+  500: 0.605,
+  600: 0.515,
+  700: 0.425,
+  800: 0.34,
+  900: 0.255,
+  950: 0.175,
 };
 
 /**
- * Generates an 11-step 50-950 scale anchored smoothly around the user's chosen hex,
+ * Generates an 11-step 50-950 scale in OKLCH anchored smoothly around the user's chosen hex,
  * preserving the exact user HEX at its closest lightness step (between 200 and 800).
  */
 export function generateShadeScale(hex: string): ShadeScale {
   const normalized = normalizeHex(hex);
-  const { h, s, l } = hexToHsl(normalized);
+  const { l, c, h } = hexToOklch(normalized);
 
-  // Find closest anchor step among 200..800 so 50/100 stay light and 900/950 stay deep
   const anchorCandidates: ShadeStep[] = [200, 300, 400, 500, 600, 700, 800];
   let anchorStep: ShadeStep = 500;
   let minDiff = Infinity;
   for (const step of anchorCandidates) {
-    const diff = Math.abs(TARGET_LIGHTNESS[step] - l);
+    const diff = Math.abs(TARGET_OKLCH_L[step] - l);
     if (diff < minDiff) {
       minDiff = diff;
       anchorStep = step;
@@ -209,19 +305,16 @@ export function generateShadeScale(hex: string): ShadeScale {
     }
 
     if (idx < anchorIndex) {
-      // Interpolate lightness up toward 97.5% at step 50
-      const t = (anchorIndex - idx) / anchorIndex; // 0..1
-      const nextL = l + (97.5 - l) * Math.pow(t, 0.92);
-      // Slight saturation softening at very bright tints while keeping neutral clean
-      const nextS = s <= 12 ? Math.max(0, s * (1 - t * 0.35)) : Math.max(8, s * (1 - t * 0.25));
-      scale[step] = hslToHex(h, nextS, nextL);
+      const t = (anchorIndex - idx) / anchorIndex; // 0..1 toward 50
+      const nextL = l + (0.978 - l) * Math.pow(t, 0.92);
+      const nextC = c * (1 - t * 0.86);
+      scale[step] = oklchToHex(nextL, nextC, h);
     } else {
-      // Interpolate lightness down toward 8.5% at step 950
       const remaining = SHADE_STEPS.length - 1 - anchorIndex;
-      const t = (idx - anchorIndex) / remaining; // 0..1
-      const nextL = l - (l - 8.5) * Math.pow(t, 0.95);
-      const nextS = s <= 12 ? Math.min(14, s * (1 + t * 0.15)) : Math.min(95, s * (1 + t * 0.08));
-      scale[step] = hslToHex(h, nextS, nextL);
+      const t = (idx - anchorIndex) / remaining; // 0..1 toward 950
+      const nextL = l - (l - 0.17) * Math.pow(t, 0.95);
+      const nextC = c * (1 - t * 0.42);
+      scale[step] = oklchToHex(nextL, nextC, h);
     }
   });
 
@@ -238,21 +331,29 @@ const NAMED_COLORS: Array<{ name: string; hex: string }> = [
   { name: 'Mint Cream', hex: '#F3FAF4' },
   { name: 'Tiger Flame', hex: '#F86624' },
   { name: 'Amber Ochre', hex: '#D97706' },
+  { name: 'Saffron Gold', hex: '#FACC15' },
   { name: 'Burnt Sienna', hex: '#C2410C' },
   { name: 'Crimson Coral', hex: '#E11D48' },
+  { name: 'Soft Coral', hex: '#FB7185' },
   { name: 'Terracotta', hex: '#B4533C' },
+  { name: 'Burgundy Wine', hex: '#7F1D1D' },
   { name: 'Sage Moss', hex: '#4A7C59' },
   { name: 'Forest Pine', hex: '#1B4332' },
+  { name: 'Lime Leaf', hex: '#84CC16' },
   { name: 'Emerald Leaf', hex: '#10B981' },
   { name: 'Teal Harbor', hex: '#0D9488' },
+  { name: 'Aqua Mint', hex: '#5EEAD4' },
   { name: 'Nordic Cyan', hex: '#0284C7' },
+  { name: 'Sky Mist', hex: '#7DD3FC' },
   { name: 'Cobalt Ink', hex: '#1D4ED8' },
   { name: 'Royal Indigo', hex: '#4338CA' },
   { name: 'Midnight Navy', hex: '#1E293B' },
   { name: 'Steel Blue', hex: '#64748B' },
+  { name: 'Electric Violet', hex: '#7C3AED' },
+  { name: 'Lavender Mist', hex: '#C4B5FD' },
   { name: 'Plum Velvet', hex: '#6D28D9' },
-  { name: 'Muted Mauve', hex: '#8B5CF6' },
-  { name: 'Dusty Rose', hex: '#BE185D' },
+  { name: 'Magenta Bloom', hex: '#DB2777' },
+  { name: 'Blush Rose', hex: '#F9A8D4' },
   { name: 'Marigold Sun', hex: '#EAB308' },
   { name: 'Olive Grove', hex: '#65A30D' },
 ];
@@ -342,66 +443,129 @@ function randomBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
+type PaletteMood = 'vibrant' | 'editorial' | 'pastel' | 'earthy';
+
+function pickMood(): PaletteMood {
+  const moods: PaletteMood[] = ['vibrant', 'editorial', 'pastel', 'earthy'];
+  return moods[Math.floor(Math.random() * moods.length)];
+}
+
 export function generateHarmoniousPalette(
   current: PaletteColor[],
   mode: HarmonyMode
 ): PaletteColor[] {
   const lockedPrimary = current.find((c) => c.role === 'primary' && c.locked);
-  const baseHue = lockedPrimary
-    ? hexToHsl(lockedPrimary.hex).h
+  const lockedPrimaryOklch = lockedPrimary ? hexToOklch(lockedPrimary.hex) : null;
+
+  const baseHue = lockedPrimaryOklch
+    ? lockedPrimaryOklch.h
     : Math.floor(Math.random() * 360);
 
+  const mood = pickMood();
+
+  // Base perceptual lightness & chroma profiles per mood
+  let primaryL = randomBetween(0.50, 0.66);
+  let primaryC = randomBetween(0.14, 0.23);
+
+  let secondaryL = randomBetween(0.55, 0.72);
+  let secondaryC = randomBetween(0.11, 0.19);
+
+  let accentL = randomBetween(0.60, 0.78);
+  let accentC = randomBetween(0.16, 0.26);
+
+  if (mood === 'editorial') {
+    primaryL = randomBetween(0.36, 0.50);
+    primaryC = randomBetween(0.10, 0.18);
+    secondaryL = randomBetween(0.48, 0.65);
+    secondaryC = randomBetween(0.08, 0.15);
+    accentL = randomBetween(0.62, 0.78);
+    accentC = randomBetween(0.15, 0.24);
+  } else if (mood === 'pastel') {
+    primaryL = randomBetween(0.72, 0.84);
+    primaryC = randomBetween(0.09, 0.15);
+    secondaryL = randomBetween(0.76, 0.88);
+    secondaryC = randomBetween(0.08, 0.14);
+    accentL = randomBetween(0.58, 0.74);
+    accentC = randomBetween(0.14, 0.22);
+  } else if (mood === 'earthy') {
+    primaryL = randomBetween(0.45, 0.62);
+    primaryC = randomBetween(0.07, 0.14);
+    secondaryL = randomBetween(0.56, 0.72);
+    secondaryC = randomBetween(0.06, 0.13);
+    accentL = randomBetween(0.58, 0.74);
+    accentC = randomBetween(0.12, 0.20);
+  }
+
   let primaryH = baseHue;
-  let primaryS = Math.round(randomBetween(48, 80));
-  let primaryL = Math.round(randomBetween(32, 50));
-
   let secondaryH = baseHue;
-  let secondaryS = Math.round(randomBetween(18, 42));
-  let secondaryL = Math.round(randomBetween(36, 54));
-
   let accentH = baseHue;
-  let accentS = Math.round(randomBetween(68, 92));
-  let accentL = Math.round(randomBetween(46, 58));
+  let neutralH = baseHue;
+  let neutralC = randomBetween(0.008, 0.024);
+  let neutralL = randomBetween(0.38, 0.68);
 
   switch (mode) {
-    case 'analogous':
-      secondaryH = (baseHue + 28) % 360;
-      accentH = (baseHue + 56) % 360;
+    case 'analogous': {
+      const dir = Math.random() > 0.5 ? 1 : -1;
+      secondaryH = (baseHue + dir * randomBetween(26, 36) + 360) % 360;
+      accentH = (baseHue + dir * randomBetween(54, 72) + 360) % 360;
       break;
-    case 'complementary':
-      secondaryH = (baseHue + 18) % 360;
-      secondaryS = Math.round(randomBetween(16, 30));
+    }
+    case 'complementary': {
+      secondaryH = (baseHue + randomBetween(-22, 22) + 360) % 360;
+      secondaryL = primaryL > 0.6 ? primaryL - 0.16 : primaryL + 0.16;
+      secondaryC = Math.max(0.05, primaryC * 0.65);
       accentH = (baseHue + 180) % 360;
       break;
-    case 'triadic':
+    }
+    case 'split-complementary': {
+      secondaryH = (baseHue + 150) % 360;
+      accentH = (baseHue + 210) % 360;
+      break;
+    }
+    case 'triadic': {
       secondaryH = (baseHue + 120) % 360;
       accentH = (baseHue + 240) % 360;
       break;
-    case 'monochromatic':
+    }
+    case 'tetradic': {
+      // Cuadrática: 4 ángulos a 90° en el círculo cromático OKLCH
+      secondaryH = (baseHue + 90) % 360;
+      accentH = (baseHue + 180) % 360;
+      neutralH = (baseHue + 270) % 360;
+      neutralC = randomBetween(0.018, 0.036);
+      break;
+    }
+    case 'monochromatic': {
       secondaryH = baseHue;
-      secondaryS = Math.max(14, primaryS - 25);
-      secondaryL = Math.min(68, primaryL + 16);
       accentH = baseHue;
-      accentS = Math.min(92, primaryS + 18);
-      accentL = Math.max(36, primaryL - 8);
+      primaryL = randomBetween(0.36, 0.48);
+      primaryC = randomBetween(0.11, 0.20);
+      secondaryL = randomBetween(0.64, 0.78);
+      secondaryC = randomBetween(0.06, 0.13);
+      accentL = randomBetween(0.52, 0.66);
+      accentC = randomBetween(0.16, 0.25);
       break;
-    case 'high-contrast':
-      primaryS = Math.round(randomBetween(10, 26));
-      primaryL = Math.round(randomBetween(14, 24));
-      secondaryH = (baseHue + 20) % 360;
-      secondaryS = Math.round(randomBetween(12, 24));
-      secondaryL = Math.round(randomBetween(36, 48));
-      accentH = (baseHue + 150) % 360;
-      accentS = Math.round(randomBetween(80, 96));
-      accentL = Math.round(randomBetween(48, 56));
+    }
+    case 'high-contrast': {
+      const darkBase = Math.random() > 0.35;
+      primaryL = darkBase ? randomBetween(0.22, 0.32) : randomBetween(0.80, 0.88);
+      primaryC = randomBetween(0.04, 0.10);
+      secondaryH = (baseHue + 28) % 360;
+      secondaryL = darkBase ? randomBetween(0.40, 0.52) : randomBetween(0.56, 0.68);
+      secondaryC = randomBetween(0.07, 0.14);
+      accentH = (baseHue + 155) % 360;
+      accentL = randomBetween(0.62, 0.75);
+      accentC = randomBetween(0.19, 0.27);
       break;
+    }
     case 'curated':
     default: {
       const offsets = [
-        [24, 165],
-        [-30, 145],
-        [195, 35],
-        [35, 210],
+        [28, 160],
+        [-32, 145],
+        [195, 38],
+        [42, 215],
+        [-24, 178],
       ];
       const pick = offsets[Math.floor(Math.random() * offsets.length)];
       secondaryH = (baseHue + pick[0] + 360) % 360;
@@ -410,15 +574,23 @@ export function generateHarmoniousPalette(
     }
   }
 
-  const neutralH = primaryH;
-  const neutralS = Math.round(randomBetween(4, 10));
-  const neutralL = Math.round(randomBetween(40, 52));
+  // Allow Neutral to alternate smoothly between warm stone, cool slate, or primary-tinted
+  if (mode !== 'tetradic') {
+    const neutralMode = Math.floor(Math.random() * 3);
+    if (neutralMode === 0) {
+      neutralH = randomBetween(55, 85); // warm stone / sand
+    } else if (neutralMode === 1) {
+      neutralH = randomBetween(235, 265); // cool slate
+    } else {
+      neutralH = primaryH;
+    }
+  }
 
   const targetByRole: Record<ColorRole, string> = {
-    primary: hslToHex(primaryH, primaryS, primaryL),
-    secondary: hslToHex(secondaryH, secondaryS, secondaryL),
-    accent: hslToHex(accentH, accentS, accentL),
-    neutral: hslToHex(neutralH, neutralS, neutralL),
+    primary: oklchToHex(primaryL, primaryC, primaryH),
+    secondary: oklchToHex(secondaryL, secondaryC, secondaryH),
+    accent: oklchToHex(accentL, accentC, accentH),
+    neutral: oklchToHex(neutralL, neutralC, neutralH),
   };
 
   return current.map((item) => {
