@@ -33,10 +33,10 @@ import {
 } from 'lucide-react';
 import { ColorRole, HarmonyMode, PaletteColor } from '../types/tokens';
 import {
+  contrastRatioExact,
   CURATED_PRESETS,
   generateShadeScale,
   getAccessibleTextColor,
-  getContrastRatio,
   getNearestColorName,
   getWcagLabel,
   hexToHsl,
@@ -47,6 +47,7 @@ import {
   ROLE_LABELS,
   SHADE_STEPS,
 } from '../utils/colorEngine';
+import { formatRatio } from '../utils/contrastAudit';
 import { ContrastControls, ContrastMenu, RoleContrastBadge } from './ContrastPanel';
 
 interface PaletteBoardProps {
@@ -115,20 +116,21 @@ interface SwatchCardProps {
 }
 
 const ContrastChip: React.FC<{ bg: string; fg: string; label: string }> = ({ bg, fg, label }) => {
-  const ratio = getContrastRatio(bg, fg);
+  const ratio = contrastRatioExact(bg, fg);
+  const ratioText = formatRatio(ratio);
   const grade = getWcagLabel(ratio);
   const fails = grade === 'Bajo';
   return (
     <div
       className="flex items-center gap-2 rounded-md px-2 py-1"
       style={{ backgroundColor: fg === '#FFFFFF' ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.07)' }}
-      title={`Texto ${label} sobre este color: ${ratio}:1`}
+      title={`Texto ${label} sobre este color: ${ratioText}:1`}
     >
       <span className="font-ui-display text-[15px] font-bold leading-none" style={{ color: fg }}>
         Aa
       </span>
       <span className="font-ui-mono text-[11px] leading-none" style={{ color: fg, opacity: 0.85 }}>
-        {ratio.toFixed(1)}
+        {ratioText}
       </span>
       <span
         className="rounded-sm px-1 py-0.5 text-[10px] font-bold leading-none"

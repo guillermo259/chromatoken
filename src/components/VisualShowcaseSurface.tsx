@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertCircle, AlertTriangle, Check, CheckCircle2, ArrowUpRight } from 'lucide-react';
 import { ColorRole, DesignTokenState } from '../types/tokens';
 import {
   buildAllScales,
+  contrastRatioExact,
   deriveSemanticTheme,
-  getContrastRatio,
+  getAccessibleTextColor,
   getWcagLabel,
   ROLE_LABELS,
   SHADE_STEPS,
@@ -15,18 +16,20 @@ import {
   getSpacingScale,
   getTypeScale,
 } from '../utils/tokenExporters';
-import { auditContrast } from '../utils/contrastAudit';
+import { auditContrast, ContrastReport, formatRatio } from '../utils/contrastAudit';
 
 interface VisualShowcaseSurfaceProps {
   state: DesignTokenState;
   mode: 'light' | 'dark';
   compact?: boolean;
+  contrastReport?: ContrastReport;
 }
 
 export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
   state,
   mode,
   compact = false,
+  contrastReport: providedContrastReport,
 }) => {
   const [copiedHex, setCopiedHex] = useState<string | null>(null);
   const [switchActive, setSwitchActive] = useState(true);
@@ -45,7 +48,10 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
   );
 
   const theme = deriveSemanticTheme(scales, rawMap, mode, state.contrastLevel);
-  const contrastReport = auditContrast(state.colors, state.contrastLevel);
+  const contrastReport = useMemo(
+    () => providedContrastReport ?? auditContrast(state.colors, state.contrastLevel),
+    [providedContrastReport, state.colors, state.contrastLevel]
+  );
   const typeScale = getTypeScale(state.typography.baseSize, state.typography.scaleRatio);
   const radii = getRadiusScale(state.geometry.radiusBase);
   const spacing = getSpacingScale(state.geometry.spacingUnit);
@@ -81,8 +87,8 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
     }
   };
 
-  const primaryContrastOnSurface = getContrastRatio(theme.primary, theme.surface);
-  const textContrastOnSurface = getContrastRatio(theme.text, theme.surface);
+  const primaryContrastOnSurface = contrastRatioExact(theme.primary, theme.surface);
+  const textContrastOnSurface = contrastRatioExact(theme.text, theme.surface);
 
   return (
     <div
@@ -129,11 +135,11 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
             className="flex items-center gap-3 text-xs"
           >
             <span>
-              Texto {textContrastOnSurface}:1 ({getWcagLabel(textContrastOnSurface)})
+              Texto {formatRatio(textContrastOnSurface)}:1 ({getWcagLabel(textContrastOnSurface)})
             </span>
             <span aria-hidden="true">·</span>
             <span>
-              Primary {primaryContrastOnSurface}:1 ({getWcagLabel(primaryContrastOnSurface)})
+              Primary {formatRatio(primaryContrastOnSurface)}:1 ({getWcagLabel(primaryContrastOnSurface)})
             </span>
           </div>
         </div>
@@ -199,7 +205,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                             <span
                               style={{
                                 backgroundColor:
-                                  getContrastRatio(hex, '#FFFFFF') > 4.5
+                                  contrastRatioExact(hex, '#FFFFFF') >= 4.5
                                     ? '#FFFFFF'
                                     : '#0F172A',
                               }}
@@ -428,7 +434,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                 hex: theme.destructive,
                 style: {
                   backgroundColor: theme.destructive,
-                  color: '#FFFFFF',
+                  color: getAccessibleTextColor(theme.destructive),
                 },
                 border: false,
               },

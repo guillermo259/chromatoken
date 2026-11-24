@@ -242,17 +242,22 @@ export function getRelativeLuminance(hex: string): number {
   return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
 }
 
-export function getContrastRatio(hex1: string, hex2: string): number {
+/** Unrounded WCAG ratio. Never compare thresholds against a rounded value (4.496 is not 4.5). */
+export function contrastRatioExact(hex1: string, hex2: string): number {
   const l1 = getRelativeLuminance(hex1);
   const l2 = getRelativeLuminance(hex2);
   const lighter = Math.max(l1, l2);
   const darker = Math.min(l1, l2);
-  return Number(((lighter + 0.05) / (darker + 0.05)).toFixed(2));
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+export function getContrastRatio(hex1: string, hex2: string): number {
+  return Number(contrastRatioExact(hex1, hex2).toFixed(2));
 }
 
 export function getAccessibleTextColor(bgHex: string): '#FFFFFF' | '#0F172A' {
-  const whiteContrast = getContrastRatio(bgHex, '#FFFFFF');
-  const darkContrast = getContrastRatio(bgHex, '#0F172A');
+  const whiteContrast = contrastRatioExact(bgHex, '#FFFFFF');
+  const darkContrast = contrastRatioExact(bgHex, '#0F172A');
   return whiteContrast >= darkContrast ? '#FFFFFF' : '#0F172A';
 }
 
@@ -671,16 +676,17 @@ export function buildAllScales(colors: PaletteColor[]): Record<ColorRole, ShadeS
   return map;
 }
 
-function pickContrastStep(
+function pickContrastStepMulti(
   scale: ShadeScale,
   steps: ShadeStep[],
-  againstHex: string,
+  againstHexes: string[],
   minRatio: number,
   fallback: ShadeStep
 ): string {
   for (const step of steps) {
-    if (getContrastRatio(scale[step], againstHex) >= minRatio) {
-      return scale[step];
+    const candidate = scale[step];
+    if (againstHexes.every((bg) => contrastRatioExact(candidate, bg) >= minRatio)) {
+      return candidate;
     }
   }
   return scale[fallback];
@@ -699,36 +705,44 @@ export function deriveSemanticTheme(
     const secondary = rawColors.secondary;
     const accent = rawColors.accent;
     const surface = '#FFFFFF';
+    const surfaceRaised = '#FFFFFF';
+    const surfaceMuted = scales.neutral[100];
     const canvas = scales.neutral[50];
 
-    const text = pickContrastStep(scales.neutral, [950, 900], canvas, textTarget, 950);
-    const textSecondary = pickContrastStep(
+    const text = pickContrastStepMulti(
+      scales.neutral,
+      [950, 900],
+      [canvas, surface, surfaceRaised, surfaceMuted],
+      textTarget,
+      950
+    );
+    const textSecondary = pickContrastStepMulti(
       scales.neutral,
       contrastLevel === 'AAA' ? [800, 900, 950] : [700, 800, 900, 950],
-      surface,
+      [surface, surfaceRaised, surfaceMuted],
+      textTarget,
+      900
+    );
+    const textMuted = pickContrastStepMulti(
+      scales.neutral,
+      contrastLevel === 'AAA' ? [700, 800, 900, 950] : [600, 700, 800, 900, 950],
+      [surface, surfaceRaised, surfaceMuted],
       textTarget,
       800
     );
-    const textMuted = pickContrastStep(
-      scales.neutral,
-      contrastLevel === 'AAA' ? [700, 800, 900, 950] : [600, 700, 800, 900],
-      surface,
-      textTarget,
-      600
-    );
-    const borderStrong = pickContrastStep(
+    const borderStrong = pickContrastStepMulti(
       scales.neutral,
       [500, 600, 700, 800, 900],
-      canvas,
+      [canvas, surface],
       3.0,
-      500
+      600
     );
 
     return {
       canvas,
       surface,
-      surfaceRaised: '#FFFFFF',
-      surfaceMuted: scales.neutral[100],
+      surfaceRaised,
+      surfaceMuted,
       border: scales.neutral[200],
       borderStrong,
       text,
@@ -741,11 +755,11 @@ export function deriveSemanticTheme(
       onSecondary: getAccessibleTextColor(secondary),
       accent,
       onAccent: getAccessibleTextColor(accent),
-      success: '#15803D',
+      success: contrastLevel === 'AAA' ? '#14532D' : '#15803D',
       successSurface: '#F0FDF4',
-      warning: '#B45309',
+      warning: contrastLevel === 'AAA' ? '#78350F' : '#B45309',
       warningSurface: '#FFFBEB',
-      destructive: '#DC2626',
+      destructive: contrastLevel === 'AAA' ? '#991B1B' : '#B91C1C',
       destructiveSurface: '#FEF2F2',
     };
   }
@@ -753,11 +767,13 @@ export function deriveSemanticTheme(
   // Dark Mode with contrast safeguards matching selected WCAG level
   const darkSurface = scales.neutral[900];
   const darkCanvas = scales.neutral[950];
+  const darkSurfaceRaised = scales.neutral[800];
+  const darkSurfaceMuted = scales.neutral[800];
 
   const promoteDarkRole = (rawHex: string, scale: ShadeScale): string => {
     const onRaw = getAccessibleTextColor(rawHex);
-    const rawOnSurfaceOk = getContrastRatio(rawHex, darkSurface) >= 3.0;
-    const rawTextOk = getContrastRatio(onRaw, rawHex) >= textTarget;
+    const rawOnSurfaceOk = contrastRatioExact(rawHex, darkSurface) >= 3.0;
+    const rawTextOk = contrastRatioExact(onRaw, rawHex) >= textTarget;
     if (rawOnSurfaceOk && rawTextOk) return rawHex;
 
     // Try lighter scale steps (400 -> 100) that satisfy both darkSurface UI contrast and button text contrast
@@ -765,8 +781,8 @@ export function deriveSemanticTheme(
       const candidate = scale[step];
       const onCandidate = getAccessibleTextColor(candidate);
       if (
-        getContrastRatio(candidate, darkSurface) >= 3.0 &&
-        getContrastRatio(onCandidate, candidate) >= textTarget
+        contrastRatioExact(candidate, darkSurface) >= 3.0 &&
+        contrastRatioExact(onCandidate, candidate) >= textTarget
       ) {
         return candidate;
       }
@@ -778,34 +794,40 @@ export function deriveSemanticTheme(
   const darkSecondary = promoteDarkRole(rawColors.secondary, scales.secondary);
   const darkAccent = promoteDarkRole(rawColors.accent, scales.accent);
 
-  const text = pickContrastStep(scales.neutral, [50, 100], darkCanvas, textTarget, 50);
-  const textSecondary = pickContrastStep(
+  const text = pickContrastStepMulti(
+    scales.neutral,
+    [50, 100],
+    [darkCanvas, darkSurface, darkSurfaceRaised, darkSurfaceMuted],
+    textTarget,
+    50
+  );
+  const textSecondary = pickContrastStepMulti(
     scales.neutral,
     contrastLevel === 'AAA' ? [200, 100, 50] : [300, 200, 100, 50],
-    darkSurface,
+    [darkSurface, darkSurfaceRaised, darkSurfaceMuted],
+    textTarget,
+    100
+  );
+  const textMuted = pickContrastStepMulti(
+    scales.neutral,
+    contrastLevel === 'AAA' ? [300, 200, 100, 50] : [400, 300, 200, 100, 50],
+    [darkSurface, darkSurfaceRaised, darkSurfaceMuted],
     textTarget,
     200
   );
-  const textMuted = pickContrastStep(
-    scales.neutral,
-    contrastLevel === 'AAA' ? [300, 200, 100, 50] : [400, 300, 200, 100],
-    darkSurface,
-    textTarget,
-    400
-  );
-  const borderStrong = pickContrastStep(
+  const borderStrong = pickContrastStepMulti(
     scales.neutral,
     [500, 400, 300, 200, 100],
-    darkCanvas,
+    [darkCanvas, darkSurface],
     3.0,
-    500
+    400
   );
 
   return {
     canvas: darkCanvas,
     surface: darkSurface,
-    surfaceRaised: scales.neutral[800],
-    surfaceMuted: scales.neutral[800],
+    surfaceRaised: darkSurfaceRaised,
+    surfaceMuted: darkSurfaceMuted,
     border: scales.neutral[800],
     borderStrong,
     text,
@@ -822,7 +844,7 @@ export function deriveSemanticTheme(
     successSurface: '#052E16',
     warning: '#FBBF24',
     warningSurface: '#2A1803',
-    destructive: '#F87171',
+    destructive: contrastLevel === 'AAA' ? '#FCA5A5' : '#F87171',
     destructiveSurface: '#2C0B0E',
   };
 }

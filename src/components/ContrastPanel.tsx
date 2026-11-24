@@ -275,6 +275,19 @@ export const ContrastPanel: React.FC<ContrastPanelProps> = ({
                 </section>
               );
             })}
+
+            {report.failures.some((f) => f.role === 'system') && (
+              <section className="mt-4">
+                <h3 className="text-[13px] font-bold">Estados del sistema</h3>
+                <ul className="divide-y divide-line-soft">
+                  {report.failures
+                    .filter((f) => f.role === 'system')
+                    .map((check) => (
+                      <CheckRow key={check.key} check={check} />
+                    ))}
+                </ul>
+              </section>
+            )}
           </>
         )}
 

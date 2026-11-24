@@ -70,7 +70,8 @@ ChromaToken no compara cada color con blanco y negro: revisa las **combinaciones
 
 - Texto sobre los botones primario, secundario y de acento.
 - El primario usado como foco, icono o borde activo.
-- El texto principal, el secundario y el atenuado sobre el fondo, y el borde de campos y controles (`3:1` WCAG 1.4.11).
+- El texto principal, el secundario y el atenuado sobre el fondo, la superficie elevada y la superficie atenuada, y el borde de campos y controles (`3:1` WCAG 1.4.11).
+- Los avisos de estado (`success`, `warning` y `destructive`) sobre sus respectivos fondos, calibrados según el nivel AA o AAA.
 
 El texto necesita **4.5:1** en nivel AA y **7:1** en nivel AAA. Los elementos de interfaz y bordes necesitan **3:1**.
 
@@ -119,7 +120,7 @@ El texto necesita **4.5:1** en nivel AA y **7:1** en nivel AAA. Los elementos de
 Requisitos: **Node.js 20.19+ o 22.12+** y npm.
 
 ```bash
-git clone https://github.com/<tu-usuario>/chromatoken.git
+git clone https://github.com/guillermo259/chromatoken.git
 cd chromatoken
 npm install
 npm run dev

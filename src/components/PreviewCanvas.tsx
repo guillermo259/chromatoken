@@ -77,12 +77,12 @@ export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
       <div className="p-4 sm:p-6 lg:p-8">
         {themeMode === 'split' ? (
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <VisualShowcaseSurface state={state} mode="light" compact />
-            <VisualShowcaseSurface state={state} mode="dark" compact />
+            <VisualShowcaseSurface state={state} mode="light" compact contrastReport={contrast.report} />
+            <VisualShowcaseSurface state={state} mode="dark" compact contrastReport={contrast.report} />
           </div>
         ) : (
           <div className="mx-auto max-w-5xl">
-            <VisualShowcaseSurface state={state} mode={themeMode} />
+            <VisualShowcaseSurface state={state} mode={themeMode} contrastReport={contrast.report} />
           </div>
         )}
       </div>

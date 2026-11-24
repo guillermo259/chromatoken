@@ -62,19 +62,14 @@ const DEFAULT_STATE: DesignTokenState = {
   },
 };
 
-function loadInitialState(): DesignTokenState {
+interface InitialWorkspaceLoad {
+  state: DesignTokenState;
+  conflictingSavedState: DesignTokenState | null;
+}
+
+function loadInitialWorkspace(): InitialWorkspaceLoad {
   if (typeof window !== 'undefined') {
-    const fromHash = decodeStateFromHash(window.location.hash, DEFAULT_STATE);
-    if (fromHash) {
-      // Consume the shared hash once into localStorage and clean the URL so subsequent edits persist
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(fromHash));
-      } catch {
-        // Ignore storage quota errors
-      }
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      return fromHash;
-    }
+    let savedState: DesignTokenState | null = null;
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -83,17 +78,39 @@ function loadInitialState(): DesignTokenState {
         if (sanitized) {
           // Migrate legacy contrast level preference if present on older saved states
           const rawObj = parsed as Record<string, unknown>;
-          if (!('contrastLevel' in rawObj) && localStorage.getItem(LEGACY_LEVEL_KEY) === 'AAA') {
-            return { ...sanitized, contrastLevel: 'AAA' };
-          }
-          return sanitized;
+          savedState =
+            !('contrastLevel' in rawObj) && localStorage.getItem(LEGACY_LEVEL_KEY) === 'AAA'
+              ? { ...sanitized, contrastLevel: 'AAA' }
+              : sanitized;
         }
       }
     } catch {
-      // Ignore invalid localStorage payload
+      savedState = null;
+    }
+
+    const fromHash = decodeStateFromHash(window.location.hash, DEFAULT_STATE);
+    if (fromHash) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      const isDifferent =
+        savedState !== null && JSON.stringify(savedState) !== JSON.stringify(fromHash);
+      if (isDifferent) {
+        // Keep the prior saved workspace intact until the user confirms or starts editing
+        return { state: fromHash, conflictingSavedState: savedState };
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(fromHash));
+        localStorage.setItem(LEGACY_LEVEL_KEY, fromHash.contrastLevel);
+      } catch {
+        // Ignore storage quota errors
+      }
+      return { state: fromHash, conflictingSavedState: null };
+    }
+
+    if (savedState) {
+      return { state: savedState, conflictingSavedState: null };
     }
   }
-  return DEFAULT_STATE;
+  return { state: DEFAULT_STATE, conflictingSavedState: null };
 }
 
 interface HistoryStore {
@@ -104,7 +121,10 @@ interface HistoryStore {
 }
 
 export default function App() {
-  const [initialState] = useState<DesignTokenState>(loadInitialState);
+  const [{ state: initialState, conflictingSavedState }] =
+    useState<InitialWorkspaceLoad>(loadInitialWorkspace);
+  const [savedBackup, setSavedBackup] = useState<DesignTokenState | null>(conflictingSavedState);
+  const [storagePaused, setStoragePaused] = useState<boolean>(conflictingSavedState !== null);
   const [historyStore, setHistoryStore] = useState<HistoryStore>(() => ({
     entries: [initialState],
     index: 0,
@@ -142,13 +162,14 @@ export default function App() {
   }, [state.typography.headingFont, state.typography.bodyFont, state.typography.monoFont]);
 
   useEffect(() => {
+    if (storagePaused) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       localStorage.setItem(LEGACY_LEVEL_KEY, state.contrastLevel);
     } catch {
       // Storage unavailable or full: the session still works in memory
     }
-  }, [state]);
+  }, [state, storagePaused]);
 
   /**
    * Commits any state transformation to the unified undo/redo history.
@@ -157,6 +178,7 @@ export default function App() {
    */
   const commitState = useCallback(
     (updater: (prev: DesignTokenState) => DesignTokenState, coalesceKey: string | null = null) => {
+      setStoragePaused(false);
       const now = Date.now();
       setHistoryStore((store) => {
         const current = store.entries[store.index];
@@ -439,6 +461,55 @@ export default function App() {
         onNavigate={navigate}
         onShare={handleShareUrl}
       />
+
+      {savedBackup && (
+        <div
+          role="region"
+          aria-label="Enlace compartido"
+          className="border-b border-line bg-sheet px-4 py-2.5 sm:px-6"
+        >
+          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-2.5 text-xs">
+            <p className="text-ink-soft">
+              Abriste un enlace compartido. Tu espacio anterior (
+              <span className="font-semibold text-ink">
+                {savedBackup.brandName || 'Sin nombre'}
+              </span>
+              ) sigue guardado.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const previous = savedBackup;
+                  setSavedBackup(null);
+                  setStoragePaused(false);
+                  setHistoryStore({
+                    entries: [previous],
+                    index: 0,
+                    lastCoalesceKey: null,
+                    lastTimestamp: 0,
+                  });
+                  notify('Espacio anterior restaurado');
+                }}
+                className="inline-flex h-8 items-center rounded-lg border border-line bg-ground px-2.5 font-semibold text-ink transition-colors hover:border-ink"
+              >
+                Volver a mi espacio
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSavedBackup(null);
+                  setStoragePaused(false);
+                  notify('Enlace guardado en tu espacio');
+                }}
+                className="inline-flex h-8 items-center rounded-lg bg-ink px-2.5 font-semibold text-ground transition-opacity hover:opacity-90"
+              >
+                Guardar este en su lugar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div id="workspace">
         {activeSection === 'palette' && (

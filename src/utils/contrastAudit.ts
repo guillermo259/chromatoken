@@ -1,8 +1,8 @@
 import { ColorRole, ContrastLevel, PaletteColor } from '../types/tokens';
 import {
   buildAllScales,
+  contrastRatioExact,
   deriveSemanticTheme,
-  getRelativeLuminance,
   hexToHsl,
   hslToHex,
   SemanticThemeColors,
@@ -18,11 +18,12 @@ import {
 
 export type CheckKind = 'text' | 'ui';
 export type ThemeMode = 'light' | 'dark';
+export type CheckRole = ColorRole | 'system';
 
 interface CheckSpec {
   id: string;
-  /** Palette role whose HEX is adjusted to fix this pair */
-  role: ColorRole;
+  /** Palette role whose HEX is adjusted to fix this pair, or 'system' for fixed status pairs */
+  role: CheckRole;
   kind: CheckKind;
   label: string;
   fg: (t: SemanticThemeColors) => string;
@@ -32,7 +33,7 @@ interface CheckSpec {
 export interface ContrastCheck {
   key: string;
   id: string;
-  role: ColorRole;
+  role: CheckRole;
   kind: CheckKind;
   mode: ThemeMode;
   label: string;
@@ -119,6 +120,22 @@ const CHECKS: CheckSpec[] = [
     bg: (t) => t.surface,
   },
   {
+    id: 'text-muted-surface-muted',
+    role: 'neutral',
+    kind: 'text',
+    label: 'Texto atenuado sobre superficie atenuada',
+    fg: (t) => t.textMuted,
+    bg: (t) => t.surfaceMuted,
+  },
+  {
+    id: 'text-muted-surface-raised',
+    role: 'neutral',
+    kind: 'text',
+    label: 'Texto atenuado sobre tarjeta elevada',
+    fg: (t) => t.textMuted,
+    bg: (t) => t.surfaceRaised,
+  },
+  {
     id: 'border-input',
     role: 'neutral',
     kind: 'ui',
@@ -126,22 +143,41 @@ const CHECKS: CheckSpec[] = [
     fg: (t) => t.borderStrong,
     bg: (t) => t.canvas,
   },
+  {
+    id: 'status-success',
+    role: 'system',
+    kind: 'text',
+    label: 'Aviso de éxito sobre su fondo',
+    fg: (t) => t.success,
+    bg: (t) => t.successSurface,
+  },
+  {
+    id: 'status-warning',
+    role: 'system',
+    kind: 'text',
+    label: 'Aviso de advertencia sobre su fondo',
+    fg: (t) => t.warning,
+    bg: (t) => t.warningSurface,
+  },
+  {
+    id: 'status-destructive',
+    role: 'system',
+    kind: 'text',
+    label: 'Aviso de error sobre su fondo',
+    fg: (t) => t.destructive,
+    bg: (t) => t.destructiveSurface,
+  },
 ];
 
 const MODES: ThemeMode[] = ['light', 'dark'];
 
 export const MODE_LABELS: Record<ThemeMode, string> = { light: 'Claro', dark: 'Oscuro' };
 
+export { contrastRatioExact };
+
 export function requiredRatio(kind: CheckKind, level: ContrastLevel): number {
   if (kind === 'ui') return 3; // WCAG has no AAA tier for non-text contrast
   return level === 'AAA' ? 7 : 4.5;
-}
-
-/** Unrounded WCAG ratio. Never compare thresholds against a rounded value (4.496 is not 4.5). */
-export function contrastRatioExact(a: string, b: string): number {
-  const la = getRelativeLuminance(a);
-  const lb = getRelativeLuminance(b);
-  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
 /** Truncate for display so a shown value never rounds up past a threshold it misses. */
@@ -226,7 +262,7 @@ export function findRoleFix(colors: PaletteColor[], role: ColorRole, level: Cont
 export function auditContrast(colors: PaletteColor[], level: ContrastLevel): ContrastReport {
   const checks = runChecks(colors, level);
   const failures = checks.filter((c) => !c.passes);
-  const failingRoles = [...new Set(failures.map((f) => f.role))];
+  const failingRoles = [...new Set(failures.map((f) => f.role).filter((r): r is ColorRole => r !== 'system'))];
   const fixes: Partial<Record<ColorRole, RoleFix>> = {};
   for (const role of failingRoles) {
     const fix = findRoleFix(colors, role, level);

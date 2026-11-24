@@ -22,7 +22,18 @@ export const Footer: React.FC = () => (
           </React.Fragment>
         ))}
       </p>
-      <p>ChromaToken · Ejecución 100% en el navegador</p>
+      <p className="flex items-center gap-2">
+        <a
+          href="https://github.com/guillermo259/chromatoken"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={linkClass}
+        >
+          GitHub
+        </a>
+        <span aria-hidden="true">·</span>
+        <span>ChromaToken · Ejecución 100% en el navegador</span>
+      </p>
     </div>
   </footer>
 );
