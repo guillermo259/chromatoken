@@ -23,7 +23,8 @@
   <a href="#llevar-los-tokens-a-figma">Figma</a> ·
   <a href="#puesta-en-marcha">Puesta en marcha</a> ·
   <a href="#estructura">Estructura</a> ·
-  <a href="#créditos">Créditos</a>
+  <a href="#créditos">Créditos</a> ·
+  <a href="README.en.md" lang="en">English README</a>
 </p>
 
 <p align="center">
@@ -33,6 +34,8 @@
 ---
 
 Todo corre en el navegador: no hay servidor, no hay cuentas y no se envían datos a ningún sitio.
+
+La interfaz está disponible en español e inglés. ChromaToken sigue las preferencias de idioma del dispositivo o navegador y usa el español cuando ninguno de los idiomas preferidos está disponible.
 
 ## Qué puedes hacer
 
@@ -89,7 +92,7 @@ El texto necesita **4.5:1** en nivel AA y **7:1** en nivel AAA. Los elementos de
 
 - **Tipografía:** combinaciones curadas de Google Fonts, o fuentes elegidas una a una para títulos, texto y código, con peso, tamaño base, proporción de escala, interlineado y espaciado de títulos.
 - **Forma:** radio de esquinas, unidad de rejilla, relleno de tarjetas, separación entre elementos y estilo de elevación.
-- **Vista previa:** botones, tarjetas, formularios, avisos y una pantalla de ejemplo pintados con tus tokens, en modo claro, oscuro o ambos a la vez.
+- **Vista previa:** explora componentes y seis plantillas en formato web o app móvil, con la regla de color 60/30/10. Compara los modos claro y oscuro.
 
 ### 3 · Exportar
 
@@ -191,10 +194,12 @@ src/
 │   ├── StudioSidebar.tsx          Paso 2: pestañas Color, Tipografía y Forma
 │   ├── PreviewCanvas.tsx          Paso 2: vista previa en claro, oscuro y ambos
 │   ├── VisualShowcaseSurface.tsx  Componentes de muestra pintados con tus tokens
+│   ├── InterfacePreview.tsx       Plantillas web y de app móvil
 │   ├── ExportPanel.tsx            Paso 3: formatos, visor de código y guías para Figma
 │   ├── ContrastPanel.tsx          Indicador y panel de contraste
 │   ├── Toast.tsx                  Avisos breves
 │   └── Footer.tsx                 Créditos y enlace al repositorio
+├── i18n/                          Detección del idioma y textos en inglés
 ├── utils/
 │   ├── colorEngine.ts             Conversión de color, escalas 50–950, armonías, tema semántico
 │   ├── contrastAudit.ts           Auditoría WCAG y corrección por luminosidad

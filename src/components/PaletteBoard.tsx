@@ -44,11 +44,12 @@ import {
   isValidHex,
   normalizeHex,
   ROLE_DESCRIPTIONS,
-  ROLE_LABELS,
   SHADE_STEPS,
 } from '../utils/colorEngine';
 import { formatRatio } from '../utils/contrastAudit';
+import { roleNames } from '../i18n/messages';
 import { ContrastControls, ContrastMenu, RoleContrastBadge } from './ContrastPanel';
+import { useTranslation } from '../i18n/LocaleProvider';
 
 interface PaletteBoardProps {
   colors: PaletteColor[];
@@ -91,7 +92,7 @@ function shouldIgnoreShortcut(target: EventTarget | null, viaKeyboard: boolean):
   if (!el || !el.closest) return false;
   if (
     el.isContentEditable ||
-    el.closest('input, textarea, select, [role="dialog"], [role="listbox"], [aria-roledescription="sortable"]')
+    el.closest('input, textarea, select, [role="dialog"], [role="listbox"], [data-sortable-handle]')
   ) {
     return true;
   }
@@ -116,6 +117,7 @@ interface SwatchCardProps {
 }
 
 const ContrastChip: React.FC<{ bg: string; fg: string; label: string }> = ({ bg, fg, label }) => {
+  const t = useTranslation();
   const ratio = contrastRatioExact(bg, fg);
   const ratioText = formatRatio(ratio);
   const grade = getWcagLabel(ratio);
@@ -124,7 +126,7 @@ const ContrastChip: React.FC<{ bg: string; fg: string; label: string }> = ({ bg,
     <div
       className="flex items-center gap-2 rounded-md px-2 py-1"
       style={{ backgroundColor: fg === '#FFFFFF' ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.07)' }}
-      title={`Texto ${label} sobre este color: ${ratioText}:1`}
+      title={t('Texto {0} sobre este color: {1}:1', label, ratioText)}
     >
       <span className="font-ui-display text-[15px] font-bold leading-none" style={{ color: fg }}>
         Aa
@@ -141,13 +143,13 @@ const ContrastChip: React.FC<{ bg: string; fg: string; label: string }> = ({ bg,
         }}
         title={
           grade === 'AA Large'
-            ? 'Cumple AA solo en texto grande (18px o 14px en negrita)'
+            ? t('Cumple AA solo en texto grande (18px o 14px en negrita)')
             : fails
-              ? 'No cumple contraste mínimo'
-              : `Cumple WCAG ${grade}`
+              ? t('No cumple contraste mínimo')
+              : t('Cumple WCAG {0}', grade)
         }
       >
-        {grade === 'AA Large' ? 'Grande' : fails ? 'No' : grade}
+        {grade === 'AA Large' ? t('Grande') : fails ? t('No') : grade}
       </span>
     </div>
   );
@@ -165,6 +167,7 @@ const SwatchCard: React.FC<SwatchCardProps> = ({
   onCopy,
   onUpdate,
 }) => {
+  const t = useTranslation();
   const fg = getAccessibleTextColor(item.hex);
   const onDark = fg === '#FFFFFF';
   const subtle = onDark ? 'rgba(255,255,255,0.72)' : 'rgba(15,23,42,0.66)';
@@ -172,13 +175,13 @@ const SwatchCard: React.FC<SwatchCardProps> = ({
   const controlBgHover = onDark ? 'rgba(255,255,255,0.24)' : 'rgba(15,23,42,0.14)';
   const scale = generateShadeScale(item.hex);
   const name = getNearestColorName(item.hex);
-  const label = ROLE_LABELS[item.role];
+  const label = t(roleNames[item.role]);
 
   if (isPlaceholder) {
     return (
       <div className="bg-checker flex h-full min-h-[240px] items-center justify-center rounded-xl border-2 border-dashed border-ink/30 lg:min-h-[440px]">
         <span className="rounded-md bg-ground px-2.5 py-1 text-xs font-semibold text-muted">
-          Suelta en otro rol
+          {t('Suelta en otro rol')}
         </span>
       </div>
     );
@@ -210,8 +213,8 @@ const SwatchCard: React.FC<SwatchCardProps> = ({
             type="button"
             onClick={onToggleLock}
             aria-pressed={item.locked}
-            aria-label={item.locked ? `Desbloquear ${label}` : `Bloquear ${label}`}
-            title={item.locked ? 'Bloqueado: no cambia al generar' : 'Bloquear para conservarlo al generar'}
+            aria-label={item.locked ? t('Desbloquear {0}', label) : t('Bloquear {0}', label)}
+            title={item.locked ? t('Bloqueado: no cambia al generar') : t('Bloquear para conservarlo al generar')}
             className={iconButton}
             style={{
               backgroundColor: item.locked ? fg : controlBg,
@@ -223,9 +226,9 @@ const SwatchCard: React.FC<SwatchCardProps> = ({
           <button
             type="button"
             onClick={onOpenTuner}
-            aria-label={`Ajustar ${label}`}
+            aria-label={t('Ajustar {0}', label)}
             aria-expanded={tunerOpen}
-            title="Ajustar matiz, saturación y luminosidad"
+            title={t('Ajustar matiz, saturación y luminosidad')}
             className={iconButton}
             style={{ backgroundColor: controlBg }}
           >
@@ -234,8 +237,8 @@ const SwatchCard: React.FC<SwatchCardProps> = ({
           <button
             type="button"
             onClick={() => onCopy?.(item.hex)}
-            aria-label={`Copiar ${item.hex}`}
-            title="Copiar HEX"
+            aria-label={t('Copiar {0}', item.hex)}
+            title={t('Copiar HEX')}
             className={iconButton}
             style={{ backgroundColor: controlBg }}
           >
@@ -251,14 +254,14 @@ const SwatchCard: React.FC<SwatchCardProps> = ({
             className="mb-2 inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-semibold"
             style={{ backgroundColor: fg, color: item.hex }}
           >
-            <Lock className="h-3 w-3" /> Fijo
+            <Lock className="h-3 w-3" />{' '}{t('Fijo')}
           </span>
         )}
         <button
           type="button"
           onClick={() => onCopy?.(item.hex)}
           className="font-ui-mono block text-left text-[28px] font-semibold uppercase leading-none tracking-tight transition-opacity hover:opacity-75 lg:text-[32px]"
-          title="Copiar HEX"
+          title={t('Copiar HEX')}
         >
           {item.hex}
         </button>
@@ -266,13 +269,13 @@ const SwatchCard: React.FC<SwatchCardProps> = ({
           {name}
         </p>
         <div className="mt-4 flex flex-wrap gap-1.5">
-          <ContrastChip bg={item.hex} fg="#FFFFFF" label="blanco" />
-          <ContrastChip bg={item.hex} fg={INK} label="oscuro" />
+          <ContrastChip bg={item.hex} fg="#FFFFFF" label={t('blanco')} />
+          <ContrastChip bg={item.hex} fg={INK} label={t('oscuro')} />
         </div>
       </div>
 
       {/* Ramp strip */}
-      <div className="grid grid-cols-11" role="group" aria-label={`Escala de ${label}`}>
+      <div className="grid grid-cols-11" role="group" aria-label={t('Escala de {0}', label)}>
         {SHADE_STEPS.map((step) => {
           const shade = scale[step];
           const isCurrent = shade.toUpperCase() === item.hex.toUpperCase();
@@ -282,7 +285,7 @@ const SwatchCard: React.FC<SwatchCardProps> = ({
               type="button"
               onClick={() => onUpdate?.(shade)}
               title={`${step} · ${shade}`}
-              aria-label={`Usar tono ${step} (${shade})`}
+              aria-label={t('Usar tono {0} ({1})', step, shade)}
               style={{ backgroundColor: shade }}
               className="relative h-9 transition-[height] duration-150 hover:h-11"
             >
@@ -314,10 +317,11 @@ const ColorTuner: React.FC<{
   onUpdate: (hex: string) => void;
   onClose: () => void;
 }> = ({ item, onUpdate, onClose }) => {
+  const t = useTranslation();
   const [draft, setDraft] = useState(item.hex);
   const ref = useRef<HTMLDivElement>(null);
   const hsl = hexToHsl(item.hex);
-  const label = ROLE_LABELS[item.role];
+  const label = t(roleNames[item.role]);
 
   useEffect(() => setDraft(item.hex), [item.hex]);
 
@@ -363,15 +367,15 @@ const ColorTuner: React.FC<{
     <div
       ref={ref}
       role="dialog"
-      aria-label={`Ajuste de ${label}`}
+      aria-label={t('Ajuste de {0}', label)}
       className="animate-pop-in absolute inset-2 z-10 flex flex-col rounded-lg bg-sheet p-4 text-ink shadow-[0_20px_40px_-16px_rgba(22,22,20,0.45)]"
     >
       <div className="mb-4 flex items-center justify-between">
-        <span className="font-ui-display text-sm font-bold">Ajustar {label}</span>
+        <span className="font-ui-display text-sm font-bold">{t('Ajustar {0}', label)}</span>
         <button
           type="button"
           onClick={onClose}
-          aria-label="Cerrar ajuste"
+          aria-label={t('Cerrar ajuste')}
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-line-soft hover:text-ink"
         >
           <X className="h-4 w-4" />
@@ -383,7 +387,7 @@ const ColorTuner: React.FC<{
           type="color"
           value={item.hex}
           onChange={(e) => onUpdate(normalizeHex(e.target.value))}
-          aria-label={`Selector visual para ${label}`}
+          aria-label={t('Selector visual para {0}', label)}
           className="h-10 w-11 shrink-0 rounded-md border border-line bg-transparent p-0.5"
         />
         <input
@@ -396,14 +400,14 @@ const ColorTuner: React.FC<{
           onBlur={() => setDraft(item.hex)}
           maxLength={7}
           spellCheck={false}
-          aria-label={`Código HEX de ${label}`}
+          aria-label={t('Código HEX de {0}', label)}
           className="font-ui-mono h-10 w-full rounded-md border border-line bg-panel px-3 text-sm font-semibold uppercase focus:border-ink focus:outline-none"
         />
       </div>
 
       <div className="space-y-4">
         {slider(
-          'Matiz',
+          t('Matiz'),
           hsl.h,
           '°',
           0,
@@ -414,7 +418,7 @@ const ColorTuner: React.FC<{
             .join(', ')})`
         )}
         {slider(
-          'Saturación',
+          t('Saturación'),
           hsl.s,
           '%',
           0,
@@ -423,7 +427,7 @@ const ColorTuner: React.FC<{
           `linear-gradient(to right, ${hslToHex(hsl.h, 0, hsl.l)}, ${hslToHex(hsl.h, 100, hsl.l)})`
         )}
         {slider(
-          'Luminosidad',
+          t('Luminosidad'),
           hsl.l,
           '%',
           6,
@@ -438,7 +442,7 @@ const ColorTuner: React.FC<{
         onClick={onClose}
         className="mt-auto h-10 rounded-lg bg-ink text-sm font-semibold text-ground transition-transform active:scale-[0.98]"
       >
-        Listo
+        {t('Listo')}
       </button>
     </div>
   );
@@ -451,6 +455,7 @@ const ColorTuner: React.FC<{
 const SortableSwatch: React.FC<
   Omit<SwatchCardProps, 'dragHandle' | 'isPlaceholder' | 'isOverlay'> & { id: string }
 > = ({ id, item, ...rest }) => {
+  const t = useTranslation();
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id });
 
@@ -460,8 +465,10 @@ const SortableSwatch: React.FC<
       ref={setActivatorNodeRef}
       {...attributes}
       {...listeners}
-      aria-label={`Mover ${ROLE_LABELS[item.role]}. Arrastra a otro rol, o pulsa Espacio y usa las flechas`}
-      title="Arrastra para mover a otro rol"
+      data-sortable-handle=""
+      aria-roledescription={t('ordenable')}
+      aria-label={t('Mover {0}. Arrastra a otro rol, o pulsa Espacio y usa las flechas', t(roleNames[item.role]))}
+      title={t('Arrastra para mover a otro rol')}
       className="flex h-9 w-9 touch-none items-center justify-center rounded-lg transition-[background-color] hover:[background-color:var(--ctl-hover)] cursor-grab active:cursor-grabbing"
     >
       <GripVertical className="h-5 w-5" />
@@ -484,6 +491,7 @@ const SortableSwatch: React.FC<
 /* -------------------------------------------------------------------------- */
 
 const PresetMenu: React.FC<{ onApply: (id: string) => void }> = ({ onApply }) => {
+  const t = useTranslation();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -512,13 +520,13 @@ const PresetMenu: React.FC<{ onApply: (id: string) => void }> = ({ onApply }) =>
         aria-haspopup="listbox"
         className="inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-sheet px-3 text-[13px] font-semibold transition-colors hover:border-ink"
       >
-        Paletas base
+        {t('Paletas base')}
         <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div
           role="listbox"
-          aria-label="Paletas base"
+          aria-label={t('Paletas base')}
           className="animate-pop-in absolute left-0 top-11 z-20 w-72 rounded-xl border border-line bg-sheet p-1.5 shadow-[0_20px_40px_-18px_rgba(22,22,20,0.4)]"
         >
           {CURATED_PRESETS.map((preset) => (
@@ -568,6 +576,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
   onContinue,
   contrast,
 }) => {
+  const t = useTranslation();
   const [openTuner, setOpenTuner] = useState<ColorRole | null>(null);
   const [contrastOpen, setContrastOpen] = useState(false);
   const [contrastFocus, setContrastFocus] = useState<ColorRole | null>(null);
@@ -632,7 +641,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
   const activeIndex = activeId ? indexOfId(activeId) : -1;
   const roleAt = (id: string | number) => {
     const i = indexOfId(String(id));
-    return i >= 0 ? ROLE_LABELS[colors[i].role] : '';
+    return i >= 0 ? t(roleNames[colors[i].role]) : '';
   };
 
   return (
@@ -642,7 +651,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <div
             role="group"
-            aria-label="Regla de armonía"
+            aria-label={t('Regla de armonía')}
             className="-mx-1 flex max-w-full items-center gap-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {HARMONY_OPTIONS.map((opt) => {
@@ -653,14 +662,14 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
                   type="button"
                   aria-pressed={active}
                   onClick={() => onHarmonyChange(opt.value)}
-                  title={opt.hint}
+                  title={t(opt.hint)}
                   className={`h-9 shrink-0 rounded-lg px-3 text-[13px] font-semibold transition-colors ${
                     active
                       ? 'bg-ink text-ground'
                       : 'text-muted hover:bg-line-soft hover:text-ink'
                   }`}
                 >
-                  {opt.label}
+                  {t(opt.label)}
                 </button>
               );
             })}
@@ -672,8 +681,8 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
               type="button"
               onClick={onUndo}
               disabled={!canUndo}
-              title="Deshacer (Ctrl+Z)"
-              aria-label="Deshacer"
+              title={t('Deshacer (Ctrl+Z)')}
+              aria-label={t('Deshacer')}
               className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-line-soft disabled:opacity-35 disabled:hover:bg-transparent"
             >
               <Undo2 className="h-4 w-4" />
@@ -682,8 +691,8 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
               type="button"
               onClick={onRedo}
               disabled={!canRedo}
-              title="Rehacer (Ctrl+Shift+Z)"
-              aria-label="Rehacer"
+              title={t('Rehacer (Ctrl+Shift+Z)')}
+              aria-label={t('Rehacer')}
               className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-line-soft disabled:opacity-35 disabled:hover:bg-transparent"
             >
               <Redo2 className="h-4 w-4" />
@@ -707,24 +716,24 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
             <button
               type="button"
               onClick={onGenerate}
-              aria-label="Generar paleta"
-              title="Generar paleta (Espacio)"
+              aria-label={t('Generar paleta')}
+              title={t('Generar paleta (Espacio)')}
               className="group inline-flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-signal text-sm font-bold text-ink whitespace-nowrap transition-transform active:scale-[0.97] sm:w-auto sm:pl-3.5 sm:pr-2.5"
             >
               <Shuffle className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:rotate-180" />
-              <span className="hidden sm:inline">Generar</span>
+              <span className="hidden sm:inline">{t('Generar')}</span>
               <kbd className="hidden rounded-md bg-ink/12 px-1.5 py-0.5 text-[11px] font-medium sm:inline">
-                Espacio
+                {t('Espacio')}
               </kbd>
             </button>
             <button
               type="button"
               onClick={onContinue}
-              aria-label="Siguiente: sistema"
+              aria-label={t('Siguiente: sistema')}
               className="group inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-ink px-3 text-sm font-semibold whitespace-nowrap transition-colors hover:bg-ink hover:text-ground sm:px-3.5"
             >
-              <span className="sm:hidden">Siguiente</span>
-              <span className="hidden sm:inline">Siguiente: sistema</span>
+              <span className="sm:hidden">{t('Siguiente')}</span>
+              <span className="hidden sm:inline">{t('Siguiente: sistema')}</span>
               <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
             </button>
           </div>
@@ -740,26 +749,25 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
         onDragCancel={() => setActiveId(null)}
         accessibility={{
           screenReaderInstructions: {
-            draggable:
-              'Pulsa Espacio para tomar el color. Usa las flechas para elegir otro rol y Espacio para soltarlo. Escape cancela.',
+            draggable: t('Pulsa Espacio para tomar el color. Usa las flechas para elegir otro rol y Espacio para soltarlo. Escape cancela.'),
           },
           announcements: {
-            onDragStart: ({ active }) => `Tomaste el color de ${roleAt(active.id)}.`,
-            onDragOver: ({ over }) => (over ? `Sobre el rol ${roleAt(over.id)}.` : 'Fuera de los roles.'),
+            onDragStart: ({ active }) => t('Tomaste el color de {0}.', roleAt(active.id)),
+            onDragOver: ({ over }) => (over ? t('Sobre el rol {0}.', roleAt(over.id)) : t('Fuera de los roles.')),
             onDragEnd: ({ over }) =>
-              over ? `Color movido a ${roleAt(over.id)}.` : 'Movimiento cancelado.',
-            onDragCancel: () => 'Movimiento cancelado.',
+              over ? t('Color movido a {0}.', roleAt(over.id)) : t('Movimiento cancelado.'),
+            onDragCancel: () => t('Movimiento cancelado.'),
           },
         }}
       >
         <SortableContext items={order} strategy={rectSortingStrategy}>
           <div className="grid flex-1 grid-cols-1 gap-3 p-3 sm:p-4 md:grid-cols-2 lg:grid-cols-4">
             {colors.map((item, i) => (
-              <section key={item.role} aria-label={ROLE_LABELS[item.role]} className="flex flex-col">
+              <section key={item.role} aria-label={t(roleNames[item.role])} className="flex flex-col">
                 <header className="mb-2.5 px-1">
                   <div className="flex items-center justify-between gap-2">
                     <h2 className="font-ui-display text-base font-extrabold leading-tight tracking-[-0.02em]">
-                      {ROLE_LABELS[item.role]}
+                      {t(roleNames[item.role])}
                     </h2>
                     <RoleContrastBadge
                       report={contrast.report}
@@ -770,7 +778,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
                       }}
                     />
                   </div>
-                  <p className="mt-0.5 text-xs leading-snug text-muted">{ROLE_DESCRIPTIONS[item.role]}</p>
+                  <p className="mt-0.5 text-xs leading-snug text-muted">{t(ROLE_DESCRIPTIONS[item.role])}</p>
                 </header>
                 <div className="flex-1">
                   <SortableSwatch
@@ -805,10 +813,9 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
       </DndContext>
 
       <p className="hidden px-6 pb-4 text-xs text-muted lg:block">
-        <kbd className="rounded border border-line bg-sheet px-1.5 py-0.5 text-[11px] text-ink">Espacio</kbd>{' '}
-        genera colores nuevos para los roles sin bloquear. Arrastra el asa{' '}
-        <GripVertical className="inline h-3.5 w-3.5 align-[-2px]" /> para cambiar un color de rol.
-        Clic en un tono de la escala para usarlo.
+        <kbd className="rounded border border-line bg-sheet px-1.5 py-0.5 text-[11px] text-ink">{t('Espacio')}</kbd>{' '}
+        {t('genera colores nuevos para los roles sin bloquear. Arrastra el asa')}{' '}
+        <GripVertical className="inline h-3.5 w-3.5 align-[-2px]" />{' '}{t('para cambiar un color de rol. Clic en un tono de la escala para usarlo.')}
       </p>
     </main>
   );

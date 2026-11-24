@@ -7,6 +7,8 @@ import {
   generateTailwindConfig,
   generateTokensJson,
 } from '../utils/tokenExporters';
+import { richMessage, useLocale, useTranslation } from '../i18n/LocaleProvider';
+import type { Locale, Translate } from '../i18n/messages';
 import { ExportFile, generateFigmaVariables, generateTokensStudio } from '../utils/figmaExporters';
 
 interface ExportPanelProps {
@@ -30,122 +32,100 @@ interface ExportFormat {
   label: string;
   name: string;
   useFor: string;
-  build: (s: DesignTokenState) => ExportFile[];
+  build: (state: DesignTokenState, locale: Locale) => ExportFile[];
   guide?: ImportGuide;
 }
 
 const single =
-  (filename: string, mimeType: string, fn: (s: DesignTokenState) => string) =>
-  (s: DesignTokenState): ExportFile[] => [{ filename, mimeType, content: fn(s) }];
+  (filename: string, mimeType: string, fn: (state: DesignTokenState, locale: Locale) => string) =>
+  (state: DesignTokenState, locale: Locale): ExportFile[] => [{ filename, mimeType, content: fn(state, locale) }];
 
 const Ui: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <span className="font-semibold text-ink">{children}</span>
 );
 
-const FORMATS: ExportFormat[] = [
-  {
-    id: 'css',
-    group: 'code',
-    label: 'tokens.css',
-    name: 'Variables CSS',
-    useFor: 'Cualquier proyecto web. Incluye :root, .dark y la importación de Google Fonts.',
-    build: single('tokens.css', 'text/css', generateCssVariables),
-  },
-  {
-    id: 'tailwind',
-    group: 'code',
-    label: 'tailwind-theme.css',
-    name: 'Tailwind v4',
-    useFor: 'Bloque @theme listo para pegar en tu CSS principal.',
-    build: single('tailwind-theme.css', 'text/css', generateTailwindConfig),
-  },
-  {
-    id: 'json',
-    group: 'code',
-    label: 'tokens.json',
-    name: 'JSON (formato W3C)',
-    useFor: 'Style Dictionary y otras herramientas que leen tokens DTCG.',
-    build: single('tokens.json', 'application/json', generateTokensJson),
-  },
-  {
-    id: 'markdown',
-    group: 'code',
-    label: 'tokens.md',
-    name: 'Documento Markdown',
-    useFor: 'Especificación legible para el equipo o para agentes de código.',
-    build: single('tokens.md', 'text/markdown', generateDesignTokenMd),
-  },
-  {
-    id: 'figma',
-    group: 'figma',
-    label: 'Light.json + Dark.json',
-    name: 'Variables de Figma',
-    useFor: 'Importación nativa, sin plugins. Colores, tamaños, radios y espaciado con modos Light y Dark.',
-    build: generateFigmaVariables,
-    guide: {
-      title: 'Cómo importar en Figma',
-      steps: [
-        <>
-          Descarga los dos archivos con <Ui>Descargar todos</Ui>.
-        </>,
-        <>
-          En Figma, sin nada seleccionado, abre <Ui>Local variables</Ui> en el panel derecho y crea una
-          colección nueva.
-        </>,
-        <>
-          Arrastra <Ui>Light.json</Ui> y <Ui>Dark.json</Ui> juntos a la ventana de variables. Cada archivo
-          crea un modo de la colección.
-        </>,
-        <>
-          Para actualizar más adelante, haz clic derecho sobre un modo, elige <Ui>Import mode</Ui> y
-          selecciona el archivo de ese modo.
-        </>,
-      ],
-      notes: [
-        'Requiere un plan Professional o superior de Figma.',
-        'Los colores semánticos quedan enlazados a la paleta cuando coinciden con un tono.',
-        'Las variables de Figma no admiten estilos de texto ni sombras. Para eso usa la opción Tokens Studio.',
-      ],
+function getFormats(t: Translate): ExportFormat[] {
+  const guide = (message: string, ...terms: string[]) =>
+    richMessage(t(message), ...terms.map((term) => <Ui>{term}</Ui>));
+
+  return [
+    {
+      id: 'css',
+      group: 'code',
+      label: 'tokens.css',
+      name: t('Variables CSS'),
+      useFor: t('Cualquier proyecto web. Incluye :root, .dark y la importación de Google Fonts.'),
+      build: single('tokens.css', 'text/css', generateCssVariables),
     },
-  },
-  {
-    id: 'tokens-studio',
-    group: 'figma',
-    label: 'tokens-studio.json',
-    name: 'Tokens Studio',
-    useFor: 'Para el plugin Tokens Studio. Además de las variables, crea estilos de texto y de sombra.',
-    build: single('tokens-studio.json', 'application/json', generateTokensStudio),
-    guide: {
-      title: 'Cómo importar con Tokens Studio',
-      steps: [
-        <>
-          Instala el plugin <Ui>Tokens Studio for Figma</Ui> desde la Comunidad de Figma y ábrelo.
-        </>,
-        <>
-          Pulsa el botón <Ui>Load and export</Ui> (abajo a la izquierda), elige{' '}
-          <Ui>Load from file/folder</Ui>, luego <Ui>Choose file</Ui> y selecciona{' '}
-          <Ui>tokens-studio.json</Ui>.
-        </>,
-        <>
-          Pulsa <Ui>Styles &amp; Variables</Ui>, luego <Ui>Export styles &amp; variables</Ui>, y marca
-          variables y estilos.
-        </>,
-      ],
-      notes: [
-        <>
-          Exportar por <Ui>Themes</Ui> crea una colección con modos Light y Dark, pero requiere un plan de
-          pago de Tokens Studio. Con <Ui>Token sets</Ui> (gratis), Light y Dark quedan como colecciones
-          separadas.
-        </>,
-        'Incluye los estilos de texto Display, H1 a H3, Body, Small y Code, y las sombras sm, md y lg por modo.',
-        <>
-          El plugin ya viene configurado con el formato <Ui>W3C DTCG</Ui>, que es el de este archivo. Puedes
-          comprobarlo en <Ui>Settings</Ui>, junto a <Ui>Local document</Ui>.
-        </>,
-      ],
+    {
+      id: 'tailwind',
+      group: 'code',
+      label: 'tailwind-theme.css',
+      name: 'Tailwind v4',
+      useFor: t('Bloque @theme listo para pegar en tu CSS principal.'),
+      build: single('tailwind-theme.css', 'text/css', generateTailwindConfig),
     },
-  },
-];
+    {
+      id: 'json',
+      group: 'code',
+      label: 'tokens.json',
+      name: t('JSON (formato W3C)'),
+      useFor: t('Style Dictionary y otras herramientas que leen tokens DTCG.'),
+      build: single('tokens.json', 'application/json', generateTokensJson),
+    },
+    {
+      id: 'markdown',
+      group: 'code',
+      label: 'tokens.md',
+      name: t('Documento Markdown'),
+      useFor: t('Especificación legible para el equipo o para agentes de código.'),
+      build: single('tokens.md', 'text/markdown', generateDesignTokenMd),
+    },
+    {
+      id: 'figma',
+      group: 'figma',
+      label: 'Light.json + Dark.json',
+      name: t('Variables de Figma'),
+      useFor: t('Importación nativa, sin plugins. Colores, tamaños, radios y espaciado con modos Light y Dark.'),
+      build: generateFigmaVariables,
+      guide: {
+        title: t('Cómo importar en Figma'),
+        steps: [
+          guide('Descarga los dos archivos con {0}.', t('Descargar todos')),
+          guide('En Figma, sin nada seleccionado, abre {0} en el panel derecho y crea una colección nueva.', 'Local variables'),
+          guide('Arrastra {0} y {1} juntos a la ventana de variables. Cada archivo crea un modo de la colección.', 'Light.json', 'Dark.json'),
+          guide('Para actualizar más adelante, haz clic derecho sobre un modo, elige {0} y selecciona el archivo de ese modo.', 'Import mode'),
+        ],
+        notes: [
+          t('Requiere un plan Professional o superior de Figma.'),
+          t('Los colores semánticos quedan enlazados a la paleta cuando coinciden con un tono.'),
+          t('Las variables de Figma no admiten estilos de texto ni sombras. Para eso usa la opción Tokens Studio.'),
+        ],
+      },
+    },
+    {
+      id: 'tokens-studio',
+      group: 'figma',
+      label: 'tokens-studio.json',
+      name: 'Tokens Studio',
+      useFor: t('Para el plugin Tokens Studio. Además de las variables, crea estilos de texto y de sombra.'),
+      build: single('tokens-studio.json', 'application/json', generateTokensStudio),
+      guide: {
+        title: t('Cómo importar con Tokens Studio'),
+        steps: [
+          guide('Instala el plugin {0} desde la Comunidad de Figma y ábrelo.', 'Tokens Studio for Figma'),
+          guide('Pulsa el botón {0} (abajo a la izquierda), elige {1}, luego {2} y selecciona {3}.', 'Load and export', 'Load from file/folder', 'Choose file', 'tokens-studio.json'),
+          guide('Pulsa {0}, luego {1}, y marca variables y estilos.', 'Styles & Variables', 'Export styles & variables'),
+        ],
+        notes: [
+          guide('Exportar por {0} crea una colección con modos Light y Dark, pero requiere un plan de pago de Tokens Studio. Con {1} (gratis), Light y Dark quedan como colecciones separadas.', 'Themes', 'Token sets'),
+          t('Incluye los estilos de texto Display, H1 a H3, Body, Small y Code, y las sombras sm, md y lg por modo.'),
+          guide('El plugin ya viene configurado con el formato {0}, que es el de este archivo. Puedes comprobarlo en {1}, junto a {2}.', 'W3C DTCG', 'Settings', 'Local document'),
+        ],
+      },
+    },
+  ];
+}
 
 const GROUPS: { id: ExportFormat['group']; title: string }[] = [
   { id: 'code', title: 'Para código' },
@@ -169,8 +149,8 @@ function downloadAll(files: ExportFile[]) {
   files.forEach((f, i) => window.setTimeout(() => download(f), i * 250));
 }
 
-function formatBytes(n: number) {
-  return n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`;
+function formatBytes(n: number, locale: Locale) {
+  return n < 1024 ? `${n} B` : `${(n / 1024).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} KB`;
 }
 
 export const ExportPanel: React.FC<ExportPanelProps> = ({
@@ -181,11 +161,14 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
   onShare,
   onBack,
 }) => {
+  const locale = useLocale();
+  const t = useTranslation();
+  const formats = useMemo(() => getFormats(t), [t]);
   const outputs = useMemo(
-    () => Object.fromEntries(FORMATS.map((f) => [f.id, f.build(state)])) as Record<ExportTab, ExportFile[]>,
-    [state]
+    () => Object.fromEntries(formats.map((f) => [f.id, f.build(state, locale)])) as Record<ExportTab, ExportFile[]>,
+    [formats, state, locale]
   );
-  const current = FORMATS.find((f) => f.id === activeTab) ?? FORMATS[0];
+  const current = formats.find((f) => f.id === activeTab) ?? formats[0];
   const files = outputs[current.id];
 
   const [fileIndex, setFileIndex] = useState(0);
@@ -204,13 +187,13 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
             className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted transition-colors hover:text-ink"
           >
             <ArrowLeft className="h-4 w-4" />
-            Volver al sistema
+            {t('Volver al sistema')}
           </button>
           <h1 className="font-ui-display text-3xl font-extrabold leading-[0.95] tracking-[-0.035em]">
-            Exportar {state.brandName || 'tokens'}
+            {t('Exportar')}{' '}{state.brandName || 'tokens'}
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            Todos los archivos salen de la misma configuración. Elige el formato que usa tu proyecto.
+            {t('Todos los archivos salen de la misma configuración. Elige el formato que usa tu proyecto.')}
           </p>
         </div>
 
@@ -220,11 +203,11 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
           ))}
         </div>
 
-        <div role="radiogroup" aria-label="Formato de exportación" className="space-y-4">
+        <div role="radiogroup" aria-label={t('Formato de exportación')} className="space-y-4">
           {GROUPS.map((group) => (
             <div key={group.id} className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{group.title}</p>
-              {FORMATS.filter((f) => f.group === group.id).map((f) => {
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{t(group.title)}</p>
+              {formats.filter((f) => f.group === group.id).map((f) => {
                 const active = f.id === current.id;
                 return (
                   <button
@@ -250,9 +233,9 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
         </div>
 
         <div className="rounded-xl border border-dashed border-line p-3.5">
-          <p className="text-sm font-bold">Enlace editable</p>
+          <p className="text-sm font-bold">{t('Enlace editable')}</p>
           <p className="mt-1 text-[13px] leading-snug text-ink-soft">
-            Un enlace que reabre esta configuración para seguir ajustándola.
+            {t('Un enlace que reabre esta configuración para seguir ajustándola.')}
           </p>
           <button
             type="button"
@@ -260,12 +243,12 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
             className="mt-3 inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-sheet px-3 text-[13px] font-semibold transition-colors hover:border-ink"
           >
             <Link2 className="h-4 w-4" />
-            Copiar enlace
+            {t('Copiar enlace')}
           </button>
         </div>
       </div>
 
-      <section aria-label={`Contenido de ${file.filename}`} className="min-w-0">
+      <section aria-label={t('Contenido de {0}', file.filename)} className="min-w-0">
         {current.guide && (
           <details open className="group mb-4 rounded-xl border border-line bg-sheet">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 [&::-webkit-details-marker]:hidden">
@@ -297,7 +280,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {files.length > 1 ? (
-              <div role="tablist" aria-label="Archivos" className="inline-flex rounded-lg border border-line p-0.5">
+              <div role="tablist" aria-label={t('Archivos')} className="inline-flex rounded-lg border border-line p-0.5">
                 {files.map((f, i) => (
                   <button
                     key={f.filename}
@@ -317,7 +300,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
               <span className="font-ui-mono text-[13px] font-medium text-ink">{file.filename}</span>
             )}
             <span className="font-ui-mono text-[13px] text-muted">
-              {lines.length} líneas, {formatBytes(new Blob([code]).size)}
+              {t('{0} líneas, {1}', lines.length, formatBytes(new Blob([code]).size, locale))}
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -327,7 +310,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
               className="inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-sheet px-3 text-[13px] font-semibold transition-colors hover:border-ink"
             >
               <Copy className="h-4 w-4" />
-              Copiar
+              {t('Copiar')}
             </button>
             {files.length > 1 && (
               <button
@@ -345,7 +328,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
               className="inline-flex h-9 items-center gap-2 rounded-lg bg-ink px-3.5 text-[13px] font-semibold text-ground transition-transform active:scale-[0.97]"
             >
               <Download className="h-4 w-4" />
-              {files.length > 1 ? `Descargar todos (${files.length})` : 'Descargar'}
+              {files.length > 1 ? t('Descargar todos ({0})', files.length) : t('Descargar')}
             </button>
           </div>
         </div>

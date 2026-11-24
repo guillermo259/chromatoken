@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUpRight, Link2 } from 'lucide-react';
 import { PaletteColor, WorkspaceSection } from '../types/tokens';
+import { useTranslation } from '../i18n/LocaleProvider';
 
 interface TopBarProps {
   colors: PaletteColor[];
@@ -32,6 +33,7 @@ const LiveMark: React.FC<{ colors: PaletteColor[] }> = ({ colors }) => (
 );
 
 export const TopBar: React.FC<TopBarProps> = ({ colors, activeSection, onNavigate, onShare }) => {
+  const t = useTranslation();
   const activeIndex = STEPS.findIndex((s) => s.id === activeSection);
 
   return (
@@ -43,7 +45,7 @@ export const TopBar: React.FC<TopBarProps> = ({ colors, activeSection, onNavigat
           type="button"
           onClick={() => onNavigate('palette')}
           className="group flex shrink-0 items-center gap-2.5 justify-self-start rounded-md"
-          aria-label="ChromaToken, volver al inicio"
+          aria-label={t('ChromaToken, volver al inicio')}
         >
           <LiveMark colors={colors} />
           <span className="font-ui-display font-wide text-[15px] font-extrabold tracking-[-0.03em]">
@@ -51,7 +53,7 @@ export const TopBar: React.FC<TopBarProps> = ({ colors, activeSection, onNavigat
           </span>
         </button>
 
-        <nav aria-label="Pasos" className="hidden md:block">
+        <nav aria-label={t('Pasos')} className="hidden md:block">
           <ol className="flex items-center rounded-lg border border-line bg-panel p-1">
             {STEPS.map((step, i) => {
               const isActive = step.id === activeSection;
@@ -75,7 +77,7 @@ export const TopBar: React.FC<TopBarProps> = ({ colors, activeSection, onNavigat
                     >
                       {i + 1}
                     </span>
-                    {step.label}
+                    {t(step.label)}
                   </button>
                 </li>
               );
@@ -88,10 +90,10 @@ export const TopBar: React.FC<TopBarProps> = ({ colors, activeSection, onNavigat
             type="button"
             onClick={onShare}
             className="inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-sheet px-3 text-[13px] font-semibold text-ink transition-colors hover:border-ink"
-            title="Copiar un enlace con toda la configuración"
+            title={t('Copiar un enlace con toda la configuración')}
           >
             <Link2 className="h-4 w-4" />
-            <span className="hidden sm:inline md:hidden lg:inline">Compartir</span>
+            <span className="hidden sm:inline md:hidden lg:inline">{t('Compartir')}</span>
           </button>
           {activeSection !== 'export' && (
             <button
@@ -99,7 +101,7 @@ export const TopBar: React.FC<TopBarProps> = ({ colors, activeSection, onNavigat
               onClick={() => onNavigate('export')}
               className="group inline-flex h-9 items-center gap-1.5 rounded-lg bg-ink px-3.5 text-[13px] font-semibold text-ground transition-transform active:scale-[0.97]"
             >
-              Exportar
+              {t('Exportar')}
               <ArrowUpRight className="h-4 w-4 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
             </button>
           )}
@@ -107,7 +109,7 @@ export const TopBar: React.FC<TopBarProps> = ({ colors, activeSection, onNavigat
       </div>
 
       {/* Phone step switcher: same control, full width */}
-      <nav aria-label="Pasos" className="border-t border-line px-4 py-2 md:hidden">
+      <nav aria-label={t('Pasos')} className="border-t border-line px-4 py-2 md:hidden">
         <ol className="grid grid-cols-3 gap-1 rounded-lg border border-line bg-panel p-1">
           {STEPS.map((step, i) => {
             const isActive = step.id === activeSection;
@@ -124,7 +126,7 @@ export const TopBar: React.FC<TopBarProps> = ({ colors, activeSection, onNavigat
                   <span className={`font-ui-mono text-[11px] ${isActive ? 'text-signal' : ''}`}>
                     {i + 1}
                   </span>
-                  {step.short}
+                  {t(step.short)}
                 </button>
               </li>
             );

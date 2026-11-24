@@ -17,6 +17,8 @@ import {
 } from './colorEngine';
 import { getGoogleFontsImportUrl } from '../data/googleFonts';
 import { auditContrast, formatRatio, MODE_LABELS } from './contrastAudit';
+import { translator } from '../i18n/messages';
+import type { Locale, Translate } from '../i18n/messages';
 
 export interface DerivedShadows {
   light: { sm: string; md: string; lg: string };
@@ -460,7 +462,8 @@ ${semanticVarLines(dark)}
 `;
 }
 
-export function generateDesignTokenMd(state: DesignTokenState): string {
+export function generateDesignTokenMd(state: DesignTokenState, locale: Locale = 'es'): string {
+  const t = translator(locale);
   const scales = buildAllScales(state.colors);
   const raw = getRawColorMap(state);
   const light = deriveSemanticTheme(scales, raw, 'light', state.contrastLevel);
@@ -474,22 +477,22 @@ export function generateDesignTokenMd(state: DesignTokenState): string {
     state.typography.monoFont
   );
 
-  return `# ${state.brandName || 'Design System'} — tokens.md
+  return `# ${state.brandName || t('Sistema de diseño')} — tokens.md
 
-> Especificación de tokens de diseño lista para desarrollo web y agentes de código (nivel objetivo: WCAG 2.2 ${state.contrastLevel}).
+> ${t('Especificación de tokens de diseño lista para desarrollo web y agentes de código (nivel objetivo: WCAG 2.2 {0}).', state.contrastLevel)}
 
-## 1. Paleta Cromática
+## 1. ${t('Paleta cromática')}
 
-| Rol | HEX Base | Uso Principal |
+| ${t('Rol')} | ${t('HEX base')} | ${t('Uso principal')} |
 | --- | --- | --- |
-| Primary | \`${raw.primary}\` | Acciones primarias, CTAs, enlaces activos y foco |
-| Secondary | \`${raw.secondary}\` | Botones secundarios, etiquetas estructurales |
-| Accent | \`${raw.accent}\` | Indicadores destacados, acentos clave |
-| Neutral | \`${raw.neutral}\` | Fondos Light/Dark, bordes y jerarquía de texto |
+| Primary | \`${raw.primary}\` | ${t('Acciones primarias, CTAs, enlaces activos y foco')} |
+| Secondary | \`${raw.secondary}\` | ${t('Botones secundarios, etiquetas estructurales')} |
+| Accent | \`${raw.accent}\` | ${t('Indicadores destacados, acentos clave')} |
+| Neutral | \`${raw.neutral}\` | ${t('Fondos claro y oscuro, bordes y jerarquía de texto')} |
 
-### Tokens Semánticos (Light Mode vs Dark Mode)
+### ${t('Tokens semánticos (modo claro y oscuro)')}
 
-| Token | Light Mode | Dark Mode |
+| Token | ${t('Modo claro')} | ${t('Modo oscuro')} |
 | --- | --- | --- |
 | \`canvas\` | \`${light.canvas}\` | \`${dark.canvas}\` |
 | \`surface\` | \`${light.surface}\` | \`${dark.surface}\` |
@@ -511,14 +514,14 @@ export function generateDesignTokenMd(state: DesignTokenState): string {
 | \`warning\` / \`warning-surface\` | \`${light.warning}\` / \`${light.warningSurface}\` | \`${dark.warning}\` / \`${dark.warningSurface}\` |
 | \`destructive\` / \`destructive-surface\` | \`${light.destructive}\` / \`${light.destructiveSurface}\` | \`${dark.destructive}\` / \`${dark.destructiveSurface}\` |
 
-## 2. Tipografía (Google Fonts)
+## 2. ${t('Tipografía')} (Google Fonts)
 
-- **Import**: \`${fontsUrl}\`
-- **Títulos (Display / Headings)**: \`${state.typography.headingFont}\` · Weight \`${state.typography.headingWeight}\` · Tracking \`${state.typography.headingTracking}em\`
-- **Párrafos y UI (Body)**: \`${state.typography.bodyFont}\` · Weight \`${state.typography.bodyWeight}\` · Line Height \`${state.typography.lineHeight}\`
+- **${t('Importación')}**: \`${fontsUrl}\`
+- **${t('Títulos')}**: \`${state.typography.headingFont}\` · ${t('Peso de fuente')} \`${state.typography.headingWeight}\` · ${t('Espaciado entre letras')} \`${state.typography.headingTracking}em\`
+- **${t('Párrafos e interfaz')}**: \`${state.typography.bodyFont}\` · ${t('Peso de fuente')} \`${state.typography.bodyWeight}\` · ${t('Interlineado')} \`${state.typography.lineHeight}\`
 - **Monospace**: \`${state.typography.monoFont}\`
 
-### Escala Tipográfica (Ratio \`${state.typography.scaleRatio}\` desde \`${state.typography.baseSize}px\`)
+### ${t('Escala tipográfica (proporción {0} desde {1})', `\`${state.typography.scaleRatio}\``, `\`${state.typography.baseSize}px\``)}
 
 - \`display\`: \`${typeScale['4xl']}px\`
 - \`h1\`: \`${typeScale['3xl']}px\`
@@ -528,34 +531,34 @@ export function generateDesignTokenMd(state: DesignTokenState): string {
 - \`sm\`: \`${typeScale.sm}px\`
 - \`xs\`: \`${typeScale.xs}px\`
 
-## 3. Geometría, Espaciado y Elevación
+## 3. ${t('Geometría, espaciado y elevación')}
 
-- **Border Radius**: \`sm: ${radii.sm}px\` · \`md: ${radii.md}px\` · \`lg: ${radii.lg}px\` · \`xl: ${radii.xl}px\`
-- **Unidad Base**: \`${state.geometry.spacingUnit}px\`
-- **Card Padding**: \`${state.geometry.cardPadding}px\`
-- **Element Gap**: \`${state.geometry.elementGap}px\`
-- **Estilo de Elevación**: \`${state.geometry.elevationStyle}\`
-  - Light \`shadow-md\`: \`${shadows.light.md}\`
-  - Dark \`shadow-md\`: \`${shadows.dark.md}\`
+- **${t('Radio de esquinas')}**: \`sm: ${radii.sm}px\` · \`md: ${radii.md}px\` · \`lg: ${radii.lg}px\` · \`xl: ${radii.xl}px\`
+- **${t('Unidad de rejilla')}**: \`${state.geometry.spacingUnit}px\`
+- **${t('Relleno de tarjetas')}**: \`${state.geometry.cardPadding}px\`
+- **${t('Separación entre elementos')}**: \`${state.geometry.elementGap}px\`
+- **${t('Estilo de elevación')}**: \`${state.geometry.elevationStyle}\`
+  - ${t('Claro')} \`shadow-md\`: \`${shadows.light.md}\`
+  - ${t('Oscuro')} \`shadow-md\`: \`${shadows.dark.md}\`
 
-${contrastSection(state)}`;
+${contrastSection(state, t)}`;
 }
 
-function contrastSection(state: DesignTokenState): string {
+function contrastSection(state: DesignTokenState, t: Translate): string {
   const level = state.contrastLevel;
   const report = auditContrast(state.colors, level);
   const textMin = level === 'AAA' ? '7:1' : '4.5:1';
   const rows = report.checks
     .map(
       (c) =>
-        `| ${c.label} | ${MODE_LABELS[c.mode]} | \`${c.fg}\` sobre \`${c.bg}\` | ${formatRatio(c.ratio)}:1 | ${c.required}:1 | ${c.passes ? 'Cumple' : '**No cumple**'} |`
+        `| ${t(c.label)} | ${t(MODE_LABELS[c.mode])} | ${t('{0} sobre {1}', `\`${c.fg}\``, `\`${c.bg}\``)} | ${formatRatio(c.ratio)}:1 | ${c.required}:1 | ${c.passes ? t('Cumple') : `**${t('No cumple')}**`} |`
     )
     .join('\n');
-  return `## 4. Accesibilidad (contraste WCAG 2.2 ${level})
+  return `## 4. ${t('Accesibilidad (contraste WCAG 2.2 {0})', level)}
 
-${report.passed} de ${report.total} combinaciones cumplen. Texto: ${textMin}. Elementos de interfaz y bordes: 3:1.
+${t('{0} de {1} combinaciones cumplen. Texto: {2}. Elementos de interfaz y bordes: 3:1.', report.passed, report.total, textMin)}
 
-| Combinación | Modo | Colores | Ratio | Mínimo | Estado |
+| ${t('Combinación')} | ${t('Modo')} | ${t('Colores')} | ${t('Ratio')} | ${t('Mínimo')} | ${t('Estado')} |
 | --- | --- | --- | --- | --- | --- |
 ${rows}
 `;

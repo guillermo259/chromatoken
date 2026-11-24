@@ -11,6 +11,8 @@ import type { ColorRole, DesignTokenState } from '../types/tokens';
 import { buildAllScales, deriveSemanticTheme } from '../utils/colorEngine';
 import { getElevationShadows, getRadiusScale, getTypeScale } from '../utils/tokenExporters';
 import './InterfacePreview.css';
+import { useLocale, useTranslation } from '../i18n/LocaleProvider';
+import type { Locale } from '../i18n/messages';
 
 export const PREVIEW_TEMPLATES = [
   { id: 'components', label: 'Componentes', icon: Layers3 },
@@ -27,10 +29,10 @@ export type PreviewPlatform = 'web' | 'app';
 type InterfaceTemplate = Exclude<PreviewTemplate, 'components'>;
 
 const DASHBOARD_METRICS = [
-  { label: 'Ingresos', value: '$24.850', change: '+12,4%' },
-  { label: 'Usuarios', value: '1.482', change: '+8,2%' },
-  { label: 'Conversión', value: '4,8%', change: '+0,6 pp' },
-];
+  { label: 'Ingresos', value: 24850, style: 'currency', change: 0.124 },
+  { label: 'Usuarios', value: 1482, style: 'decimal', change: 0.082 },
+  { label: 'Conversión', value: 0.048, style: 'percent', change: 0.6 },
+] as const;
 const DASHBOARD_MENU = [
   { label: 'Resumen', icon: House },
   { label: 'Informes', icon: ChartNoAxesColumnIncreasing },
@@ -46,15 +48,30 @@ const DASHBOARD_MONTHS = [
   { label: 'Jun', current: 93, previous: 70 },
 ];
 const TRANSACTIONS = [
-  { label: 'Estudio Norte', date: 'Hoy', amount: '+$1.240,00', icon: ArrowDownLeft },
-  { label: 'Suscripción', date: 'Ayer', amount: '−$24,00', icon: CreditCard },
-  { label: 'Pago de servicios', date: '22 oct', amount: '−$92,50', icon: ArrowUpRight },
+  { label: 'Estudio Norte', date: 'Hoy', amount: 1240, icon: ArrowDownLeft },
+  { label: 'Suscripción', date: 'Ayer', amount: -24, icon: CreditCard },
+  { label: 'Pago de servicios', date: '22 oct', amount: -92.5, icon: ArrowUpRight },
 ];
 const PRODUCTS = [
   { name: 'Bolso Ágil', price: '$38', shape: 'bag' },
   { name: 'Vaso Duna', price: '$24', shape: 'cup' },
   { name: 'Lámpara Alba', price: '$68', shape: 'lamp' },
 ];
+
+function formatMoney(locale: Locale, amount: number, decimals: number, signed = false) {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'USD',
+    currencyDisplay: 'narrowSymbol',
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+    signDisplay: signed ? 'exceptZero' : 'auto',
+  }).format(amount);
+}
+
+function formatChange(locale: Locale, value: number, style: 'decimal' | 'percent') {
+  return new Intl.NumberFormat(locale, { style, signDisplay: 'always', maximumFractionDigits: 1 }).format(value);
+}
 
 function Brand({ name }: { name: string }) {
   return (
@@ -66,51 +83,57 @@ function Brand({ name }: { name: string }) {
 }
 
 function RevenueChart() {
+  const t = useTranslation();
   return (
     <section className="mock-card">
-      <h4>Ingresos por mes</h4>
-      <div className="mock-bars" role="img" aria-label="Los ingresos de junio superan a los de enero y a los de junio del periodo anterior">
+      <h4>{t('Ingresos por mes')}</h4>
+      <div className="mock-bars" role="img" aria-label={t('Los ingresos de junio superan a los de enero y a los de junio del periodo anterior')}>
         {DASHBOARD_MONTHS.map(({ label, current, previous }) => (
           <div key={label}>
             <span><i style={{ height: current + '%' }} /><i style={{ height: previous + '%' }} /></span>
-            <small>{label}</small>
+            <small>{t(label)}</small>
           </div>
         ))}
       </div>
-      <div className="mock-chart-legend"><span>Actual</span><span>Anterior</span></div>
+      <div className="mock-chart-legend"><span>{t('Actual')}</span><span>{t('Anterior')}</span></div>
     </section>
   );
 }
 
 function Balance() {
+  const t = useTranslation();
+  const locale = useLocale();
   return (
     <div className="mock-balance">
-      <span>Saldo disponible</span>
-      <strong>$8.420,50</strong>
-      <span><span className="mock-balance-chip">USD</span> Cuenta principal</span>
+      <span>{t('Saldo disponible')}</span>
+      <strong>{formatMoney(locale, 8420.5, 2)}</strong>
+      <span><span className="mock-balance-chip">USD</span>{' '}{t('Cuenta principal')}</span>
     </div>
   );
 }
 
 function TransferActions() {
+  const t = useTranslation();
   return (
     <div className="mock-finance-actions">
-      <span className="mock-button"><ArrowUpRight size={14} aria-hidden="true" /> Enviar</span>
-      <span className="mock-button mock-button-outline"><ArrowDownLeft size={14} aria-hidden="true" /> Recibir</span>
+      <span className="mock-button"><ArrowUpRight size={14} aria-hidden="true" />{' '}{t('Enviar')}</span>
+      <span className="mock-button mock-button-outline"><ArrowDownLeft size={14} aria-hidden="true" />{' '}{t('Recibir')}</span>
     </div>
   );
 }
 
 function RecentTransactions() {
+  const t = useTranslation();
+  const locale = useLocale();
   return (
     <section className="mock-card">
-      <h4>Actividad reciente</h4>
+      <h4>{t('Actividad reciente')}</h4>
       <ul className="mock-transactions">
         {TRANSACTIONS.map(({ label, date, amount, icon: Icon }) => (
           <li key={label}>
             <span className="mock-item-icon"><Icon size={15} aria-hidden="true" /></span>
-            <span><strong>{label}</strong><small>{date}</small></span>
-            <b>{amount}</b>
+            <span><strong>{t(label)}</strong><small>{t(date)}</small></span>
+            <b>{formatMoney(locale, amount, 2, true)}</b>
           </li>
         ))}
       </ul>
@@ -119,12 +142,13 @@ function RecentTransactions() {
 }
 
 function ProductCards({ limit }: { limit?: number }) {
+  const t = useTranslation();
   return (
     <div className="mock-products">
       {PRODUCTS.slice(0, limit).map(({ name, price, shape }) => (
         <div key={shape} className="mock-product">
           <div className={`mock-product-art mock-product-art--${shape}`} aria-hidden="true"><i /></div>
-          <div><h4>{name}</h4><span>{price}</span></div>
+          <div><h4>{t(name)}</h4><span>{price}</span></div>
         </div>
       ))}
     </div>
@@ -132,78 +156,84 @@ function ProductCards({ limit }: { limit?: number }) {
 }
 
 function OnboardingStep({ isApp = false }: { isApp?: boolean }) {
+  const t = useTranslation();
   const Heading = isApp ? 'h3' : 'h4';
   return (
     <>
       <div className="mock-phone-art" aria-hidden="true"><Sparkles strokeWidth={1.4} /></div>
-      <p className="mock-kicker">Paso 1 de 3</p>
-      <Heading>Tu día, a tu manera</Heading>
-      <p className="mock-description">Empieza creando una rutina que se adapte a ti.</p>
+      <p className="mock-kicker">{t('Paso 1 de 3')}</p>
+      <Heading>{t('Tu día, a tu manera')}</Heading>
+      <p className="mock-description">{t('Empieza creando una rutina que se adapte a ti.')}</p>
       <div className="mock-phone-progress" aria-hidden="true"><i /><i /><i /></div>
-      <span className="mock-button">Continuar <ChevronRight size={14} aria-hidden="true" /></span>
+      <span className="mock-button">{t('Continuar')}{' '}<ChevronRight size={14} aria-hidden="true" /></span>
     </>
   );
 }
 
 function Landing({ brand }: { brand: string }) {
+  const t = useTranslation();
   return (
     <div className="mock-site mock-landing">
       <header className="mock-header">
         <Brand name={brand} />
-        <span className="mock-nav">Cursos <span>Comunidad</span></span>
-        <span className="mock-button mock-button-outline">Ver cursos</span>
+        <span className="mock-nav">{t('Cursos')}{' '}<span>{t('Comunidad')}</span></span>
+        <span className="mock-button mock-button-outline">{t('Ver cursos')}</span>
       </header>
       <div className="mock-landing-hero">
         <div>
-          <p className="mock-kicker">Cursos de diseño</p>
-          <h3 className="mock-display">Diseña con intención.</h3>
-          <p className="mock-description">Aprende a convertir tus ideas en experiencias que resuelvan problemas reales.</p>
-          <span className="mock-button">Explorar cursos <ArrowUpRight size={14} aria-hidden="true" /></span>
+          <p className="mock-kicker">{t('Cursos de diseño')}</p>
+          <h3 className="mock-display">{t('Diseña con intención.')}</h3>
+          <p className="mock-description">{t('Aprende a convertir tus ideas en experiencias que resuelvan problemas reales.')}</p>
+          <span className="mock-button">{t('Explorar cursos')}{' '}<ArrowUpRight size={14} aria-hidden="true" /></span>
         </div>
         <div className="mock-landing-art" aria-hidden="true">
           <i /><i /><i /><i /><i /><i />
         </div>
       </div>
       <div className="mock-landing-stats">
-        <span><strong>24</strong> Cursos</span>
-        <span><strong>12</strong> Mentores</span>
-        <span><strong>1,2 mil</strong> Estudiantes</span>
+        <span><strong>24</strong>{' '}{t('Cursos')}</span>
+        <span><strong>12</strong>{' '}{t('Mentores')}</span>
+        <span><strong>{t('1,2 mil')}</strong>{' '}{t('Estudiantes')}</span>
       </div>
     </div>
   );
 }
 
 function Dashboard({ brand }: { brand: string }) {
+  const t = useTranslation();
+  const locale = useLocale();
   return (
     <div className="mock-dashboard">
       <aside className="mock-dashboard-rail">
         <Brand name={brand} />
-        <ul aria-label="Menú de ejemplo">
+        <ul aria-label={t('Menú de ejemplo')}>
           {DASHBOARD_MENU.map(({ label, icon: Icon }) => (
-            <li key={label}><Icon size={15} aria-hidden="true" /><span>{label}</span></li>
+            <li key={label}><Icon size={15} aria-hidden="true" /><span>{t(label)}</span></li>
           ))}
         </ul>
       </aside>
       <div className="mock-dashboard-body">
         <header className="mock-section-header">
-          <h3>Resumen de actividad</h3>
-          <span className="mock-tag">Últimos 6 meses</span>
+          <h3>{t('Resumen de actividad')}</h3>
+          <span className="mock-tag">{t('Últimos 6 meses')}</span>
         </header>
         <div className="mock-metrics">
-          {DASHBOARD_METRICS.map(({ label, value, change }) => (
+          {DASHBOARD_METRICS.map(({ label, value, style, change }) => (
             <div className="mock-metric" key={label}>
-              <span>{label}</span><strong>{value}</strong><small>{change}</small>
+              <span>{t(label)}</span>
+              <strong>{style === 'currency' ? formatMoney(locale, value, 0) : value.toLocaleString(locale, { style, maximumFractionDigits: 1 })}</strong>
+              <small>{style === 'percent' ? `${formatChange(locale, change, 'decimal')} pp` : formatChange(locale, change, 'percent')}</small>
             </div>
           ))}
         </div>
         <div className="mock-dashboard-charts">
           <RevenueChart />
           <section className="mock-card">
-            <h4>Fuentes de tráfico</h4>
-            <div className="mock-donut" role="img" aria-label="Tráfico directo 62 %, búsqueda 24 % y referidos 14 %">
+            <h4>{t('Fuentes de tráfico')}</h4>
+            <div className="mock-donut" role="img" aria-label={t('Tráfico directo 62 %, búsqueda 24 % y referidos 14 %')}>
               <strong aria-hidden="true">62 %</strong>
             </div>
-            <div className="mock-chart-legend"><span>Directo</span><span>Búsqueda</span><span>Referidos</span></div>
+            <div className="mock-chart-legend"><span>{t('Directo')}</span><span>{t('Búsqueda')}</span><span>{t('Referidos')}</span></div>
           </section>
         </div>
       </div>
@@ -212,16 +242,17 @@ function Dashboard({ brand }: { brand: string }) {
 }
 
 function Finance({ brand }: { brand: string }) {
+  const t = useTranslation();
   return (
     <div className="mock-site">
       <header className="mock-header">
         <Brand name={brand} />
-        <span className="mock-nav">Cuentas <span>Movimientos</span></span>
-        <span className="mock-button mock-button-outline"><CreditCard size={14} aria-hidden="true" /> Mis tarjetas</span>
+        <span className="mock-nav">{t('Cuentas')}{' '}<span>{t('Movimientos')}</span></span>
+        <span className="mock-button mock-button-outline"><CreditCard size={14} aria-hidden="true" />{' '}{t('Mis tarjetas')}</span>
       </header>
       <div className="mock-finance">
         <div>
-          <h3>Mis finanzas</h3>
+          <h3>{t('Mis finanzas')}</h3>
           <Balance />
           <TransferActions />
         </div>
@@ -232,44 +263,46 @@ function Finance({ brand }: { brand: string }) {
 }
 
 function Blog({ brand }: { brand: string }) {
+  const t = useTranslation();
   return (
     <div className="mock-site">
       <header className="mock-header">
         <Brand name={brand} />
-        <span className="mock-nav">Artículos <span>Archivo</span></span>
-        <span className="mock-button">Suscribirme</span>
+        <span className="mock-nav">{t('Artículos')}{' '}<span>{t('Archivo')}</span></span>
+        <span className="mock-button">{t('Suscribirme')}</span>
       </header>
       <div className="mock-blog-feature">
         <div className="mock-blog-art" aria-hidden="true"><i /><i /><i /></div>
         <div className="mock-blog-copy">
-          <p className="mock-kicker">Ideas y procesos</p>
-          <h3 className="mock-display">El color que cuenta una historia.</h3>
-          <p className="mock-description">Cómo elegir una paleta que comunique lo que tu marca quiere decir.</p>
-          <span className="mock-read-more">Leer artículo <ArrowRight size={14} aria-hidden="true" /></span>
+          <p className="mock-kicker">{t('Ideas y procesos')}</p>
+          <h3 className="mock-display">{t('El color que cuenta una historia.')}</h3>
+          <p className="mock-description">{t('Cómo elegir una paleta que comunique lo que tu marca quiere decir.')}</p>
+          <span className="mock-read-more">{t('Leer artículo')}{' '}<ArrowRight size={14} aria-hidden="true" /></span>
         </div>
       </div>
       <div className="mock-blog-index">
-        <div><p className="mock-kicker">Tipografía</p><h4>El ritmo de una buena lectura</h4></div>
-        <div><p className="mock-kicker">Proceso</p><h4>Del boceto al sistema</h4></div>
+        <div><p className="mock-kicker">{t('Tipografía')}</p><h4>{t('El ritmo de una buena lectura')}</h4></div>
+        <div><p className="mock-kicker">{t('Proceso')}</p><h4>{t('Del boceto al sistema')}</h4></div>
       </div>
     </div>
   );
 }
 
 function Shop({ brand }: { brand: string }) {
+  const t = useTranslation();
   return (
     <div className="mock-site">
       <header className="mock-header">
         <Brand name={brand} />
-        <span className="mock-nav">Tienda <span>Colecciones</span></span>
-        <span className="mock-button mock-button-outline"><ShoppingBag size={14} aria-hidden="true" /> Bolsa (0)</span>
+        <span className="mock-nav">{t('Tienda')}{' '}<span>{t('Colecciones')}</span></span>
+        <span className="mock-button mock-button-outline"><ShoppingBag size={14} aria-hidden="true" />{' '}{t('Bolsa (0)')}</span>
       </header>
       <div className="mock-shop-heading">
         <div>
-          <p className="mock-kicker">Colección Esenciales</p>
-          <h3 className="mock-display">Objetos para el día a día.</h3>
+          <p className="mock-kicker">{t('Colección Esenciales')}</p>
+          <h3 className="mock-display">{t('Objetos para el día a día.')}</h3>
         </div>
-        <span className="mock-button">Ver colección <ArrowUpRight size={14} aria-hidden="true" /></span>
+        <span className="mock-button">{t('Ver colección')}{' '}<ArrowUpRight size={14} aria-hidden="true" /></span>
       </div>
       <ProductCards />
     </div>
@@ -277,13 +310,14 @@ function Shop({ brand }: { brand: string }) {
 }
 
 function Onboarding({ brand }: { brand: string }) {
+  const t = useTranslation();
   return (
     <div className="mock-onboarding">
       <div className="mock-onboarding-intro">
         <Brand name={brand} />
         <div>
-          <h3 className="mock-display">Encuentra tu ritmo.</h3>
-          <p className="mock-description">Una app para organizar tu día y hacer espacio para lo que importa.</p>
+          <h3 className="mock-display">{t('Encuentra tu ritmo.')}</h3>
+          <p className="mock-description">{t('Una app para organizar tu día y hacer espacio para lo que importa.')}</p>
         </div>
       </div>
       <div className="mock-phone">
@@ -312,6 +346,7 @@ function AppFrame({ brand, destinations, children }: {
   destinations?: AppDestination[];
   children: ReactNode;
 }) {
+  const t = useTranslation();
   return (
     <div className="mock-frame mock-app-frame">
       <div className="mock-app-status" aria-hidden="true">
@@ -320,9 +355,9 @@ function AppFrame({ brand, destinations, children }: {
       <div className="mock-app-top"><Brand name={brand} /></div>
       <div className="mock-app-content">{children}</div>
       {destinations && (
-        <ul className="mock-app-nav" aria-label="Navegación de ejemplo">
+        <ul className="mock-app-nav" aria-label={t('Navegación de ejemplo')}>
           {destinations.map(({ label, icon: Icon }) => (
-            <li key={label}><span><Icon size={16} aria-hidden="true" /></span>{label}</li>
+            <li key={label}><span><Icon size={16} aria-hidden="true" /></span>{t(label)}</li>
           ))}
         </ul>
       )}
@@ -331,36 +366,39 @@ function AppFrame({ brand, destinations, children }: {
 }
 
 function LandingApp() {
+  const t = useTranslation();
   return (
     <div className="mock-app-screen">
-      <h3>Aprende diseño</h3>
+      <h3>{t('Aprende diseño')}</h3>
       <section className="mock-app-banner">
-        <span className="mock-app-badge">Nuevo curso</span>
-        <h4>Diseña con intención</h4>
-        <p>De la primera idea a tu primer prototipo.</p>
-        <span className="mock-button">Empezar <ArrowRight size={14} aria-hidden="true" /></span>
+        <span className="mock-app-badge">{t('Nuevo curso')}</span>
+        <h4>{t('Diseña con intención')}</h4>
+        <p>{t('De la primera idea a tu primer prototipo.')}</p>
+        <span className="mock-button">{t('Empezar')}{' '}<ArrowRight size={14} aria-hidden="true" /></span>
       </section>
       <section className="mock-card mock-app-row">
         <span className="mock-item-icon"><BookOpen size={15} aria-hidden="true" /></span>
-        <div><h4>Fundamentos del color</h4><small>3 de 8 lecciones</small></div>
+        <div><h4>{t('Fundamentos del color')}</h4><small>{t('3 de 8 lecciones')}</small></div>
       </section>
       <section className="mock-card mock-app-row">
         <span className="mock-item-icon"><Layers3 size={15} aria-hidden="true" /></span>
-        <div><h4>Diseño de interfaces</h4><small>1 de 6 lecciones</small></div>
+        <div><h4>{t('Diseño de interfaces')}</h4><small>{t('1 de 6 lecciones')}</small></div>
       </section>
     </div>
   );
 }
 
 function DashboardApp() {
+  const t = useTranslation();
+  const locale = useLocale();
   const [income] = DASHBOARD_METRICS;
   return (
     <div className="mock-app-screen">
-      <h3>Resumen de actividad</h3>
+      <h3>{t('Resumen de actividad')}</h3>
       <section className="mock-app-banner">
-        <h4>{income.label} del mes</h4>
-        <strong className="mock-app-total">{income.value}</strong>
-        <span className="mock-app-badge">{income.change}</span>
+        <h4>{t('Ingresos del mes')}</h4>
+        <strong className="mock-app-total">{formatMoney(locale, income.value, 0)}</strong>
+        <span className="mock-app-badge">{formatChange(locale, income.change, 'percent')}</span>
       </section>
       <RevenueChart />
     </div>
@@ -368,9 +406,10 @@ function DashboardApp() {
 }
 
 function FinanceApp() {
+  const t = useTranslation();
   return (
     <div className="mock-app-screen">
-      <h3>Mis finanzas</h3>
+      <h3>{t('Mis finanzas')}</h3>
       <Balance />
       <TransferActions />
       <RecentTransactions />
@@ -379,33 +418,35 @@ function FinanceApp() {
 }
 
 function BlogApp() {
+  const t = useTranslation();
   return (
     <div className="mock-app-screen">
-      <h3>Para leer hoy</h3>
+      <h3>{t('Para leer hoy')}</h3>
       <article className="mock-app-article">
         <div className="mock-blog-art" aria-hidden="true"><i /><i /><i /></div>
-        <p className="mock-kicker">Ideas y procesos · 5 min</p>
-        <h4>El color que cuenta una historia</h4>
-        <span className="mock-button">Leer artículo <ArrowRight size={14} aria-hidden="true" /></span>
+        <p className="mock-kicker">{t('Ideas y procesos · 5 min')}</p>
+        <h4>{t('El color que cuenta una historia')}</h4>
+        <span className="mock-button">{t('Leer artículo')}{' '}<ArrowRight size={14} aria-hidden="true" /></span>
       </article>
       <section className="mock-card mock-app-row">
         <span className="mock-item-icon"><Bookmark size={15} aria-hidden="true" /></span>
-        <div><h4>El ritmo de una buena lectura</h4><small>Tipografía · 4 min</small></div>
+        <div><h4>{t('El ritmo de una buena lectura')}</h4><small>{t('Tipografía · 4 min')}</small></div>
       </section>
     </div>
   );
 }
 
 function ShopApp() {
+  const t = useTranslation();
   return (
     <div className="mock-app-screen">
-      <h3>Tienda</h3>
-      <div className="mock-app-search"><Search size={15} aria-hidden="true" /> Buscar productos</div>
+      <h3>{t('Tienda')}</h3>
+      <div className="mock-app-search"><Search size={15} aria-hidden="true" />{' '}{t('Buscar productos')}</div>
       <section className="mock-app-screen">
-        <h4>Colección Esenciales</h4>
+        <h4>{t('Colección Esenciales')}</h4>
         <ProductCards limit={2} />
       </section>
-      <span className="mock-button">Ver colección <ArrowRight size={14} aria-hidden="true" /></span>
+      <span className="mock-button">{t('Ver colección')}{' '}<ArrowRight size={14} aria-hidden="true" /></span>
     </div>
   );
 }
@@ -431,13 +472,14 @@ interface InterfacePreviewProps {
 }
 
 export function InterfacePreview({ state, mode, template, platform }: InterfacePreviewProps) {
+  const t = useTranslation();
   const { colors, contrastLevel, geometry, typography } = state;
-  const label = PREVIEW_TEMPLATES.find((item) => item.id === template)?.label;
-  const modeLabel = mode === 'light' ? 'Modo claro' : 'Modo oscuro';
+  const label = PREVIEW_TEMPLATES.find((item) => item.id === template)?.label ?? '';
+  const modeLabel = mode === 'light' ? t('Modo claro') : t('Modo oscuro');
   const ModeIcon = mode === 'light' ? Sun : Moon;
   const { web: WebMockup, app: AppMockup } = TEMPLATE_CONTENT[template];
   const isApp = platform === 'app';
-  const brand = state.brandName || 'Mi marca';
+  const brand = state.brandName || t('Mi marca');
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [expanded, setExpanded] = useState(false);
   const dialogTitle = useId();
@@ -494,23 +536,23 @@ export function InterfacePreview({ state, mode, template, platform }: InterfaceP
         <div className="mock-frame">
           <div className="mock-browser" aria-hidden="true">
             <span className="mock-browser-dots"><i /><i /><i /></span>
-            <span className="mock-browser-address"><Globe size={11} /> {label}</span>
+            <span className="mock-browser-address"><Globe size={11} /> {t(label)}</span>
           </div>
           <WebMockup brand={brand} />
         </div>
       )}
-      <figure className="interface-preview-distribution" aria-label="Regla de color 60/30/10">
+      <figure className="interface-preview-distribution" aria-label={t('Regla de color 60/30/10')}>
         <div className="interface-preview-ratio" aria-hidden="true"><span /><span /><span /></div>
         <figcaption>
           <ul className="interface-preview-swatches">
             {distribution.map(({ label, colors }) => (
               <li key={label}>
-                <small>{label}</small>
+                <small>{t(label)}</small>
                 <div className="interface-preview-hexes">
                   {colors.map(({ name, hex }) => (
-                    <span key={name} title={name}>
+                    <span key={name} title={t(name)}>
                       <i style={{ backgroundColor: hex }} aria-hidden="true" />
-                      <code aria-label={`${name} ${hex}`}>{hex}</code>
+                      <code aria-label={`${t(name)} ${hex}`}>{hex}</code>
                     </span>
                   ))}
                 </div>
@@ -523,14 +565,14 @@ export function InterfacePreview({ state, mode, template, platform }: InterfaceP
   );
 
   return (
-    <section aria-label={`${label}, ${isApp ? 'app móvil' : 'web'}, ${modeLabel}`} className="interface-preview">
+    <section aria-label={`${t(label)}, ${isApp ? t('app móvil') : 'web'}, ${modeLabel}`} className="interface-preview">
       <header className="interface-preview-header">
         <span><ModeIcon size={15} aria-hidden="true" /> {modeLabel}</span>
         <button
           type="button"
           aria-haspopup="dialog"
-          aria-label={`Ampliar ${label} en ${modeLabel.toLowerCase()}`}
-          title="Ampliar vista previa"
+          aria-label={t('Ampliar {0} en {1}', t(label), modeLabel.toLowerCase())}
+          title={t('Ampliar vista previa')}
           onClick={() => {
             dialogRef.current?.showModal();
             setExpanded(true);
@@ -542,8 +584,8 @@ export function InterfacePreview({ state, mode, template, platform }: InterfaceP
       {preview}
       <dialog ref={dialogRef} className="interface-preview-dialog" aria-labelledby={dialogTitle} onClose={() => setExpanded(false)}>
         <header className="interface-preview-header">
-          <h2 id={dialogTitle}>{label} · {isApp ? 'App móvil' : 'Web'} · {modeLabel}</h2>
-          <button type="button" aria-label="Cerrar vista ampliada" onClick={() => dialogRef.current?.close()}>
+          <h2 id={dialogTitle}>{t(label)} · {isApp ? t('App móvil') : 'Web'} · {modeLabel}</h2>
+          <button type="button" aria-label={t('Cerrar vista ampliada')} onClick={() => dialogRef.current?.close()}>
             <X size={18} aria-hidden="true" />
           </button>
         </header>

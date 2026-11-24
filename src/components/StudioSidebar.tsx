@@ -11,7 +11,6 @@ import {
   buildAllScales,
   isValidHex,
   normalizeHex,
-  ROLE_LABELS,
   SHADE_STEPS,
 } from '../utils/colorEngine';
 import { getElevationShadows } from '../utils/tokenExporters';
@@ -32,6 +31,9 @@ interface StudioSidebarProps {
   onRegenerateUnlocked: () => void;
   onOpenPalette: () => void;
 }
+
+import { roleNames } from '../i18n/messages';
+import { useTranslation } from '../i18n/LocaleProvider';
 
 type PanelTab = 'color' | 'type' | 'shape';
 
@@ -139,13 +141,14 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
   onRegenerateUnlocked,
   onOpenPalette,
 }) => {
+  const t = useTranslation();
   const [tab, setTab] = useState<PanelTab>('color');
   const [hexDrafts, setHexDrafts] = useState<Record<string, string>>({});
-  const { typography: t, geometry: g } = state;
+  const { typography, geometry: g } = state;
 
   const scales = buildAllScales(state.colors);
-  const headingWeights = getAvailableWeightsForFont(t.headingFont);
-  const bodyWeights = getAvailableWeightsForFont(t.bodyFont);
+  const headingWeights = getAvailableWeightsForFont(typography.headingFont);
+  const bodyWeights = getAvailableWeightsForFont(typography.bodyFont);
   const headingFontOptions = GOOGLE_FONTS_CATALOG.filter(
     (f) => f.recommendedFor === 'heading' || f.recommendedFor === 'both'
   );
@@ -165,20 +168,20 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
         {/* System name */}
         <div className="border-b border-line px-5 pb-4 pt-5">
           <label htmlFor="brand-name-input" className="text-[13px] font-medium text-ink-soft">
-            Nombre del sistema
+            {t('Nombre del sistema')}
           </label>
           <input
             id="brand-name-input"
             type="text"
             value={state.brandName}
             onChange={(e) => onBrandNameChange(e.target.value)}
-            placeholder="Ej. Acme Studio"
+            placeholder={t('Ej. Acme Studio')}
             className="font-ui-display mt-1 w-full border-0 bg-transparent p-0 text-xl font-extrabold tracking-[-0.02em] text-ink placeholder:text-muted/60 focus:outline-none focus-visible:outline-none"
           />
         </div>
 
         {/* Tabs */}
-        <div role="tablist" aria-label="Ajustes del sistema" className="flex border-b border-line px-3">
+        <div role="tablist" aria-label={t('Ajustes del sistema')} className="flex border-b border-line px-3">
           {TABS.map((item) => {
             const active = tab === item.id;
             return (
@@ -194,7 +197,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                   active ? 'text-ink' : 'text-muted hover:text-ink'
                 }`}
               >
-                {item.label}
+                {t(item.label)}
                 <span
                   aria-hidden="true"
                   className={`absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-ink transition-transform duration-200 ${
@@ -215,7 +218,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
           {tab === 'color' && (
             <>
               <Group
-                title="Roles de color"
+                title={t('Roles de color')}
                 aside={
                   <button
                     type="button"
@@ -223,7 +226,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink underline decoration-line underline-offset-4 hover:decoration-ink"
                   >
                     <SquarePen className="h-3.5 w-3.5" />
-                    Editar en el lienzo
+                    {t('Editar en el lienzo')}
                   </button>
                 }
               >
@@ -236,21 +239,21 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                         <label
                           className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg ring-1 ring-black/10"
                           style={{ backgroundColor: item.hex }}
-                          title={`Elegir color para ${ROLE_LABELS[item.role]}`}
+                          title={t('Elegir color para {0}', t(roleNames[item.role]))}
                         >
                           <input
                             type="color"
                             value={item.hex}
                             onChange={(e) => setColor(item.role, normalizeHex(e.target.value))}
-                            aria-label={`Selector de color ${ROLE_LABELS[item.role]}`}
+                            aria-label={t('Selector de color {0}', t(roleNames[item.role]))}
                             className="absolute inset-0 h-full w-full opacity-0"
                           />
                         </label>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft">
-                            {ROLE_LABELS[item.role]}
+                            {t(roleNames[item.role])}
                             {item.locked && (
-                              <Lock className="h-3 w-3 text-muted" aria-label="Bloqueado" />
+                              <Lock className="h-3 w-3 text-muted" aria-label={t('Bloqueado')} />
                             )}
                           </div>
                           <input
@@ -264,7 +267,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                               if (isValidHex(val)) onUpdateColor(item.role, normalizeHex(val));
                             }}
                             onBlur={() => setHexDrafts((p) => ({ ...p, [item.role]: item.hex }))}
-                            aria-label={`HEX ${ROLE_LABELS[item.role]}`}
+                            aria-label={`HEX ${t(roleNames[item.role])}`}
                             className="font-ui-mono w-full border-0 bg-transparent p-0 text-sm font-medium uppercase text-ink focus:outline-none focus-visible:underline"
                           />
                         </div>
@@ -275,8 +278,8 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                             key={step}
                             type="button"
                             onClick={() => setColor(item.role, scale[step])}
-                            title={`${ROLE_LABELS[item.role]} ${step}: ${scale[step]}`}
-                            aria-label={`Usar ${ROLE_LABELS[item.role]} ${step}`}
+                            title={`${t(roleNames[item.role])} ${step}: ${scale[step]}`}
+                            aria-label={t('Usar {0} {1}', t(roleNames[item.role]), step)}
                             style={{ backgroundColor: scale[step] }}
                             className="h-5 transition-transform hover:z-10 hover:scale-y-125"
                           />
@@ -293,7 +296,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                   className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-ink text-sm font-semibold transition-colors hover:bg-ink hover:text-ground"
                 >
                   <Shuffle className="h-4 w-4" />
-                  Generar colores sin bloquear
+                  {t('Generar colores sin bloquear')}
                 </button>
               </div>
             </>
@@ -301,11 +304,11 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
 
           {tab === 'type' && (
             <>
-              <Group title="Combinación">
-                <Field label="Punto de partida" htmlFor="pairing-select">
+              <Group title={t('Combinación de fuentes')}>
+                <Field label={t('Punto de partida')} htmlFor="pairing-select">
                   <select
                     id="pairing-select"
-                    value={t.pairingId}
+                    value={typography.pairingId}
                     onChange={(e) => onApplyPairing(e.target.value)}
                     className={`${inputBase} h-10`}
                   >
@@ -314,28 +317,28 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                         {p.name}: {p.headingFont} + {p.bodyFont}
                       </option>
                     ))}
-                    {t.pairingId === 'custom' && <option value="custom">Personalizada</option>}
+                    {typography.pairingId === 'custom' && <option value="custom">{t('Personalizada')}</option>}
                   </select>
                 </Field>
                 <div className="rounded-lg border border-line bg-sheet p-4">
                   <div
                     style={{
-                      fontFamily: `"${t.headingFont}", sans-serif`,
-                      fontWeight: t.headingWeight,
-                      letterSpacing: `${t.headingTracking}em`,
+                      fontFamily: `"${typography.headingFont}", sans-serif`,
+                      fontWeight: typography.headingWeight,
+                      letterSpacing: `${typography.headingTracking}em`,
                     }}
                     className="truncate text-2xl leading-tight text-ink"
                   >
-                    {state.brandName || 'Titular de prueba'}
+                    {state.brandName || t('Titular de prueba')}
                   </div>
                   <p
-                    style={{ fontFamily: `"${t.bodyFont}", sans-serif`, fontWeight: t.bodyWeight }}
+                    style={{ fontFamily: `"${typography.bodyFont}", sans-serif`, fontWeight: typography.bodyWeight }}
                     className="mt-1.5 text-[13px] leading-relaxed text-ink-soft"
                   >
-                    Un párrafo corto para juzgar ritmo, peso y color del texto.
+                    {t('Un párrafo corto para juzgar ritmo, peso y color del texto.')}
                   </p>
                   <code
-                    style={{ fontFamily: `"${t.monoFont}", monospace` }}
+                    style={{ fontFamily: `"${typography.monoFont}", monospace` }}
                     className="mt-2 block text-xs text-muted"
                   >
                     --radius-md: {g.radiusBase}px;
@@ -343,19 +346,19 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                 </div>
               </Group>
 
-              <Group title="Familias">
+              <Group title={t('Familias')}>
                 <div className="grid grid-cols-[1fr_5.5rem] gap-2">
-                  <Field label="Títulos" htmlFor="heading-font-select">
+                  <Field label={t('Títulos')} htmlFor="heading-font-select">
                     <select
                       id="heading-font-select"
-                      value={t.headingFont}
+                      value={typography.headingFont}
                       onChange={(e) => {
                         const weights = getAvailableWeightsForFont(e.target.value);
                         onUpdateTypography({
                           pairingId: 'custom',
                           headingFont: e.target.value,
-                          headingWeight: weights.includes(t.headingWeight)
-                            ? t.headingWeight
+                          headingWeight: weights.includes(typography.headingWeight)
+                            ? typography.headingWeight
                             : weights[weights.length - 1],
                         });
                       }}
@@ -368,10 +371,10 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                       ))}
                     </select>
                   </Field>
-                  <Field label="Peso" htmlFor="heading-weight-select">
+                  <Field label={t('Peso')} htmlFor="heading-weight-select">
                     <select
                       id="heading-weight-select"
-                      value={t.headingWeight}
+                      value={typography.headingWeight}
                       onChange={(e) =>
                         onUpdateTypography({ pairingId: 'custom', headingWeight: Number(e.target.value) })
                       }
@@ -386,16 +389,16 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                   </Field>
                 </div>
                 <div className="grid grid-cols-[1fr_5.5rem] gap-2">
-                  <Field label="Texto" htmlFor="body-font-select">
+                  <Field label={t('Texto')} htmlFor="body-font-select">
                     <select
                       id="body-font-select"
-                      value={t.bodyFont}
+                      value={typography.bodyFont}
                       onChange={(e) => {
                         const weights = getAvailableWeightsForFont(e.target.value);
                         onUpdateTypography({
                           pairingId: 'custom',
                           bodyFont: e.target.value,
-                          bodyWeight: weights.includes(t.bodyWeight) ? t.bodyWeight : weights[0],
+                          bodyWeight: weights.includes(typography.bodyWeight) ? typography.bodyWeight : weights[0],
                         });
                       }}
                       className={`${inputBase} h-10`}
@@ -407,10 +410,10 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                       ))}
                     </select>
                   </Field>
-                  <Field label="Peso" htmlFor="body-weight-select">
+                  <Field label={t('Peso')} htmlFor="body-weight-select">
                     <select
                       id="body-weight-select"
-                      value={t.bodyWeight}
+                      value={typography.bodyWeight}
                       onChange={(e) =>
                         onUpdateTypography({ pairingId: 'custom', bodyWeight: Number(e.target.value) })
                       }
@@ -424,10 +427,10 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                     </select>
                   </Field>
                 </div>
-                <Field label="Monoespaciada (código y cifras)" htmlFor="mono-font-select">
+                <Field label={t('Monoespaciada (código y cifras)')} htmlFor="mono-font-select">
                   <select
                     id="mono-font-select"
-                    value={t.monoFont}
+                    value={typography.monoFont}
                     onChange={(e) => onUpdateTypography({ pairingId: 'custom', monoFont: e.target.value })}
                     className={`${inputBase} h-10`}
                   >
@@ -440,49 +443,49 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                 </Field>
               </Group>
 
-              <Group title="Escala y ritmo">
-                <Field label="Proporción de escala" htmlFor="scale-ratio-select">
+              <Group title={t('Escala y ritmo')}>
+                <Field label={t('Proporción de escala')} htmlFor="scale-ratio-select">
                   <select
                     id="scale-ratio-select"
-                    value={t.scaleRatio}
+                    value={typography.scaleRatio}
                     onChange={(e) => onUpdateTypography({ scaleRatio: Number(e.target.value) })}
                     className={`${inputBase} h-10`}
                   >
                     {SCALE_RATIOS.map((r) => (
                       <option key={r.value} value={r.value}>
-                        {r.label}
+                        {t(r.label)}
                       </option>
                     ))}
                   </select>
                 </Field>
-                <Field label="Tamaño base" htmlFor="base-size" value={`${t.baseSize}px`}>
+                <Field label={t('Tamaño base')} htmlFor="base-size" value={`${typography.baseSize}px`}>
                   <input
                     id="base-size"
                     type="range"
                     min={14}
                     max={18}
                     step={1}
-                    value={t.baseSize}
+                    value={typography.baseSize}
                     onChange={(e) => onUpdateTypography({ baseSize: Number(e.target.value) })}
                     className="studio-slider w-full"
                   />
                 </Field>
-                <Field label="Interlineado" htmlFor="line-height" value={t.lineHeight.toFixed(2)}>
+                <Field label={t('Interlineado')} htmlFor="line-height" value={typography.lineHeight.toFixed(2)}>
                   <input
                     id="line-height"
                     type="range"
                     min={1.35}
                     max={1.75}
                     step={0.05}
-                    value={t.lineHeight}
+                    value={typography.lineHeight}
                     onChange={(e) => onUpdateTypography({ lineHeight: Number(e.target.value) })}
                     className="studio-slider w-full"
                   />
                 </Field>
                 <Field
-                  label="Espaciado de títulos"
+                  label={t('Espaciado de títulos')}
                   htmlFor="heading-tracking"
-                  value={`${t.headingTracking.toFixed(3)}em`}
+                  value={`${typography.headingTracking.toFixed(3)}em`}
                 >
                   <input
                     id="heading-tracking"
@@ -490,7 +493,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                     min={-0.04}
                     max={0.02}
                     step={0.005}
-                    value={t.headingTracking}
+                    value={typography.headingTracking}
                     onChange={(e) => onUpdateTypography({ headingTracking: Number(e.target.value) })}
                     className="studio-slider w-full"
                   />
@@ -501,8 +504,8 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
 
           {tab === 'shape' && (
             <>
-              <Group title="Radio de esquinas">
-                <div role="radiogroup" aria-label="Radio base" className="grid grid-cols-6 gap-1.5">
+              <Group title={t('Radio de esquinas')}>
+                <div role="radiogroup" aria-label={t('Radio base')} className="grid grid-cols-6 gap-1.5">
                   {RADIUS_PRESETS.map((r) => {
                     const active = g.radiusBase === r;
                     return (
@@ -528,10 +531,10 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                 </div>
               </Group>
 
-              <Group title="Espaciado">
-                <Field label="Unidad de rejilla">
+              <Group title={t('Espaciado')}>
+                <Field label={t('Unidad de rejilla')}>
                   <Segmented
-                    label="Unidad de rejilla"
+                    label={t('Unidad de rejilla')}
                     value={g.spacingUnit}
                     onChange={(v) => onUpdateGeometry({ spacingUnit: v })}
                     options={[
@@ -540,7 +543,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                     ]}
                   />
                 </Field>
-                <Field label="Relleno de tarjetas" htmlFor="card-padding" value={`${g.cardPadding}px`}>
+                <Field label={t('Relleno de tarjetas')} htmlFor="card-padding" value={`${g.cardPadding}px`}>
                   <input
                     id="card-padding"
                     type="range"
@@ -552,7 +555,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                     className="studio-slider w-full"
                   />
                 </Field>
-                <Field label="Separación entre elementos" htmlFor="element-gap" value={`${g.elementGap}px`}>
+                <Field label={t('Separación entre elementos')} htmlFor="element-gap" value={`${g.elementGap}px`}>
                   <input
                     id="element-gap"
                     type="range"
@@ -566,8 +569,8 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                 </Field>
               </Group>
 
-              <Group title="Elevación">
-                <div role="radiogroup" aria-label="Estilo de elevación" className="grid grid-cols-2 gap-2">
+              <Group title={t('Elevación')}>
+                <div role="radiogroup" aria-label={t('Estilo de elevación')} className="grid grid-cols-2 gap-2">
                   {ELEVATION_OPTIONS.map((opt) => {
                     const active = g.elevationStyle === opt.value;
                     const preview = getElevationShadows(opt.value).light;
@@ -587,7 +590,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                           className="h-7 w-7 shrink-0 rounded-md border border-line-soft bg-sheet"
                           style={{ boxShadow: preview.md }}
                         />
-                        {opt.label}
+                        {t(opt.label)}
                       </button>
                     );
                   })}

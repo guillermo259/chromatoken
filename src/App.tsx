@@ -26,6 +26,8 @@ import type { PreviewPlatform, PreviewTemplate } from './components/InterfacePre
 import { ExportPanel } from './components/ExportPanel';
 import { Toast } from './components/Toast';
 import { Footer } from './components/Footer';
+import { richMessage, useTranslation } from './i18n/LocaleProvider';
+import { roleNames } from './i18n/messages';
 
 const STORAGE_KEY = 'chromatoken_workspace_v1';
 const LEGACY_LEVEL_KEY = 'chromatoken_contrast_level';
@@ -122,6 +124,7 @@ interface HistoryStore {
 }
 
 export default function App() {
+  const t = useTranslation();
   const [{ state: initialState, conflictingSavedState }] =
     useState<InitialWorkspaceLoad>(loadInitialWorkspace);
   const [savedBackup, setSavedBackup] = useState<DesignTokenState | null>(conflictingSavedState);
@@ -271,14 +274,14 @@ export default function App() {
 
   const handleGeneratePalette = useCallback(() => {
     if (state.colors.every((c) => c.locked)) {
-      notify('Todos los colores están bloqueados');
+      notify(t('Todos los colores están bloqueados'));
       return;
     }
     commitState((prev) => ({
       ...prev,
       colors: generateHarmoniousPalette(prev.colors, prev.harmonyMode),
     }));
-  }, [state.colors, commitState, notify]);
+  }, [state.colors, commitState, notify, t]);
 
   const handleApplyContrastFix = useCallback(
     (role: ColorRole, hex: string) => {
@@ -286,9 +289,9 @@ export default function App() {
         ...prev,
         colors: prev.colors.map((c) => (c.role === role ? { ...c, hex } : c)),
       }));
-      notify(`${role.charAt(0).toUpperCase()}${role.slice(1)} ajustado a ${hex}`);
+      notify(t('{0} ajustado a {1}', t(roleNames[role]), hex));
     },
-    [commitState, notify]
+    [commitState, notify, t]
   );
 
   const handleFixAllContrast = useCallback(() => {
@@ -297,13 +300,14 @@ export default function App() {
     if (changed === 0) return;
     commitState((prev) => ({ ...prev, colors: nextColors }));
     const after = auditContrast(nextColors, state.contrastLevel);
-    const baseMsg = changed === 1 ? '1 color ajustado' : `${changed} colores ajustados`;
+    const baseMsg = changed === 1 ? t('1 color ajustado') : t('{0} colores ajustados', changed);
     if (after.failures.length > 0) {
-      notify(`${baseMsg} · quedan ${after.failures.length} avisos`);
+      const count = after.failures.length;
+      notify(t(count === 1 ? '{0} · queda {1} aviso' : '{0} · quedan {1} avisos', baseMsg, count));
     } else {
       notify(baseMsg);
     }
-  }, [state.colors, state.contrastLevel, commitState, notify]);
+  }, [state.colors, state.contrastLevel, commitState, notify, t]);
 
   const contrastProps = {
     report: contrastReport,
@@ -364,9 +368,9 @@ export default function App() {
         ...prev,
         colors: prev.colors.map((c) => ({ ...c, hex: preset.colors[c.role], locked: false })),
       }));
-      notify(`Paleta «${preset.name}» aplicada`);
+      notify(t('Paleta «{0}» aplicada', preset.name));
     },
-    [commitState, notify]
+    [commitState, notify, t]
   );
 
   const handleUpdateTypography = useCallback(
@@ -425,23 +429,23 @@ export default function App() {
     const shareUrl = `${window.location.origin}${window.location.pathname}#state=${encoded}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
-      notify('Enlace copiado. Quien lo abra verá esta misma configuración');
+      notify(t('Enlace copiado. Quien lo abra verá esta misma configuración.'));
     } catch {
       window.history.replaceState(null, '', `#state=${encoded}`);
-      notify('No se pudo copiar. El enlace quedó en la barra de direcciones');
+      notify(t('No se pudo copiar. El enlace quedó en la barra de direcciones'));
     }
-  }, [state, notify]);
+  }, [state, notify, t]);
 
   const handleCopy = useCallback(
     async (text: string, label?: string) => {
       try {
         await navigator.clipboard.writeText(text);
-        notify(`${label ?? text} copiado`);
+        notify(t('{0} copiado', label ?? text));
       } catch {
-        notify('El navegador bloqueó el portapapeles');
+        notify(t('El navegador bloqueó el portapapeles'));
       }
     },
-    [notify]
+    [notify, t]
   );
 
   const navigate = (section: WorkspaceSection) => {
@@ -455,7 +459,7 @@ export default function App() {
         href="#workspace"
         className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-ink focus:px-3 focus:py-2 focus:text-sm focus:text-ground"
       >
-        Saltar al área de trabajo
+        {t('Saltar al área de trabajo')}
       </a>
 
       <TopBar
@@ -468,16 +472,15 @@ export default function App() {
       {savedBackup && (
         <div
           role="region"
-          aria-label="Enlace compartido"
+          aria-label={t('Enlace compartido')}
           className="border-b border-line bg-sheet px-4 py-2.5 sm:px-6"
         >
           <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-2.5 text-xs">
             <p className="text-ink-soft">
-              Abriste un enlace compartido. Tu espacio anterior (
-              <span className="font-semibold text-ink">
-                {savedBackup.brandName || 'Sin nombre'}
-              </span>
-              ) sigue guardado.
+              {richMessage(
+                t('Abriste un enlace compartido. Tu espacio anterior ({0}) sigue guardado.'),
+                <span className="font-semibold text-ink">{savedBackup.brandName || t('Sin nombre')}</span>
+              )}
             </p>
             <div className="flex items-center gap-2">
               <button
@@ -492,22 +495,22 @@ export default function App() {
                     lastCoalesceKey: null,
                     lastTimestamp: 0,
                   });
-                  notify('Espacio anterior restaurado');
+                  notify(t('Espacio anterior restaurado'));
                 }}
                 className="inline-flex h-8 items-center rounded-lg border border-line bg-ground px-2.5 font-semibold text-ink transition-colors hover:border-ink"
               >
-                Volver a mi espacio
+                {t('Volver a mi espacio')}
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setSavedBackup(null);
                   setStoragePaused(false);
-                  notify('Enlace guardado en tu espacio');
+                  notify(t('Enlace guardado en tu espacio'));
                 }}
                 className="inline-flex h-8 items-center rounded-lg bg-ink px-2.5 font-semibold text-ground transition-opacity hover:opacity-90"
               >
-                Guardar este en su lugar
+                {t('Guardar este en su lugar')}
               </button>
             </div>
           </div>
