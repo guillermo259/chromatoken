@@ -1,5 +1,6 @@
 import {
   ColorRole,
+  ContrastLevel,
   HarmonyMode,
   PaletteColor,
   ShadeScale,
@@ -263,31 +264,32 @@ export function getWcagLabel(ratio: number): 'AAA' | 'AA' | 'AA Large' | 'Bajo' 
 }
 
 const TARGET_OKLCH_L: Record<ShadeStep, number> = {
-  50: 0.975,
+  50: 0.98,
   100: 0.94,
   200: 0.875,
   300: 0.785,
   400: 0.695,
-  500: 0.605,
-  600: 0.515,
-  700: 0.425,
-  800: 0.34,
-  900: 0.255,
-  950: 0.175,
+  500: 0.59,
+  600: 0.49,
+  700: 0.40,
+  800: 0.31,
+  900: 0.22,
+  950: 0.14,
 };
 
 /**
  * Generates an 11-step 50-950 scale in OKLCH anchored smoothly around the user's chosen hex,
- * preserving the exact user HEX at its closest lightness step (between 200 and 800).
+ * preserving the exact user HEX at its closest lightness step (50..950) and guaranteeing
+ * monotonic decreasing luminance from step 50 (lightest) to step 950 (darkest).
  */
 export function generateShadeScale(hex: string): ShadeScale {
   const normalized = normalizeHex(hex);
   const { l, c, h } = hexToOklch(normalized);
+  const baseLum = getRelativeLuminance(normalized);
 
-  const anchorCandidates: ShadeStep[] = [200, 300, 400, 500, 600, 700, 800];
   let anchorStep: ShadeStep = 500;
   let minDiff = Infinity;
-  for (const step of anchorCandidates) {
+  for (const step of SHADE_STEPS) {
     const diff = Math.abs(TARGET_OKLCH_L[step] - l);
     if (diff < minDiff) {
       minDiff = diff;
@@ -296,6 +298,8 @@ export function generateShadeScale(hex: string): ShadeScale {
   }
 
   const anchorIndex = SHADE_STEPS.indexOf(anchorStep);
+  const topL = Math.min(0.995, Math.max(0.982, l + (1 - l) * 0.6));
+  const bottomL = Math.max(0.02, Math.min(0.14, l * 0.55));
   const scale = {} as ShadeScale;
 
   SHADE_STEPS.forEach((step, idx) => {
@@ -306,17 +310,49 @@ export function generateShadeScale(hex: string): ShadeScale {
 
     if (idx < anchorIndex) {
       const t = (anchorIndex - idx) / anchorIndex; // 0..1 toward 50
-      const nextL = l + (0.978 - l) * Math.pow(t, 0.92);
-      const nextC = c * (1 - t * 0.86);
+      const nextL = l + (topL - l) * Math.pow(t, 0.92);
+      const nextC = c * (1 - t * 0.85);
       scale[step] = oklchToHex(nextL, nextC, h);
     } else {
       const remaining = SHADE_STEPS.length - 1 - anchorIndex;
       const t = (idx - anchorIndex) / remaining; // 0..1 toward 950
-      const nextL = l - (l - 0.17) * Math.pow(t, 0.95);
-      const nextC = c * (1 - t * 0.42);
+      const nextL = l - (l - bottomL) * Math.pow(t, 0.95);
+      const nextC = c * (1 - t * 0.45);
       scale[step] = oklchToHex(nextL, nextC, h);
     }
   });
+
+  // Enforce strict monotonic luminance around the anchored user color even after 8-bit sRGB rounding
+  for (let i = anchorIndex - 1; i >= 0; i--) {
+    const prevHex = scale[SHADE_STEPS[i + 1]];
+    const currStep = SHADE_STEPS[i];
+    const prevLum = getRelativeLuminance(prevHex);
+    if (getRelativeLuminance(scale[currStep]) < prevLum) {
+      const targetStepL = Math.min(0.998, hexToOklch(prevHex).l + 0.015 * (anchorIndex - i));
+      scale[currStep] = targetStepL > 0.99 ? '#FFFFFF' : oklchToHex(targetStepL, c * 0.15, h);
+      if (getRelativeLuminance(scale[currStep]) < prevLum) {
+        scale[currStep] = prevHex;
+      }
+    }
+  }
+
+  for (let i = anchorIndex + 1; i < SHADE_STEPS.length; i++) {
+    const prevHex = scale[SHADE_STEPS[i - 1]];
+    const currStep = SHADE_STEPS[i];
+    const prevLum = getRelativeLuminance(prevHex);
+    if (getRelativeLuminance(scale[currStep]) > prevLum) {
+      const targetStepL = Math.max(0.01, hexToOklch(prevHex).l - 0.015 * (i - anchorIndex));
+      scale[currStep] = targetStepL <= 0.015 ? '#000000' : oklchToHex(targetStepL, c * 0.5, h);
+      if (getRelativeLuminance(scale[currStep]) > prevLum) {
+        scale[currStep] = prevHex;
+      }
+    }
+  }
+
+  // Ensure the exact user input stays intact at its anchor
+  if (baseLum >= 0) {
+    scale[anchorStep] = normalized;
+  }
 
   return scale;
 }
@@ -635,25 +671,69 @@ export function buildAllScales(colors: PaletteColor[]): Record<ColorRole, ShadeS
   return map;
 }
 
+function pickContrastStep(
+  scale: ShadeScale,
+  steps: ShadeStep[],
+  againstHex: string,
+  minRatio: number,
+  fallback: ShadeStep
+): string {
+  for (const step of steps) {
+    if (getContrastRatio(scale[step], againstHex) >= minRatio) {
+      return scale[step];
+    }
+  }
+  return scale[fallback];
+}
+
 export function deriveSemanticTheme(
   scales: Record<ColorRole, ShadeScale>,
   rawColors: Record<ColorRole, string>,
-  mode: 'light' | 'dark'
+  mode: 'light' | 'dark',
+  contrastLevel: ContrastLevel = 'AA'
 ): SemanticThemeColors {
+  const textTarget = contrastLevel === 'AAA' ? 7.0 : 4.5;
+
   if (mode === 'light') {
     const primary = rawColors.primary;
     const secondary = rawColors.secondary;
     const accent = rawColors.accent;
+    const surface = '#FFFFFF';
+    const canvas = scales.neutral[50];
+
+    const text = pickContrastStep(scales.neutral, [950, 900], canvas, textTarget, 950);
+    const textSecondary = pickContrastStep(
+      scales.neutral,
+      contrastLevel === 'AAA' ? [800, 900, 950] : [700, 800, 900, 950],
+      surface,
+      textTarget,
+      800
+    );
+    const textMuted = pickContrastStep(
+      scales.neutral,
+      contrastLevel === 'AAA' ? [700, 800, 900, 950] : [600, 700, 800, 900],
+      surface,
+      textTarget,
+      600
+    );
+    const borderStrong = pickContrastStep(
+      scales.neutral,
+      [500, 600, 700, 800, 900],
+      canvas,
+      3.0,
+      500
+    );
+
     return {
-      canvas: scales.neutral[50],
-      surface: '#FFFFFF',
+      canvas,
+      surface,
       surfaceRaised: '#FFFFFF',
       surfaceMuted: scales.neutral[100],
       border: scales.neutral[200],
-      borderStrong: scales.neutral[300],
-      text: scales.neutral[950],
-      textSecondary: scales.neutral[700],
-      textMuted: scales.neutral[500],
+      borderStrong,
+      text,
+      textSecondary,
+      textMuted,
       primary,
       primaryHover: scales.primary[700],
       onPrimary: getAccessibleTextColor(primary),
@@ -670,27 +750,67 @@ export function deriveSemanticTheme(
     };
   }
 
-  // Dark Mode with automatic contrast safeguard for dark primary/secondary picks
+  // Dark Mode with contrast safeguards matching selected WCAG level
   const darkSurface = scales.neutral[900];
-  const primaryContrast = getContrastRatio(rawColors.primary, darkSurface);
-  const darkPrimary = primaryContrast >= 3.0 ? rawColors.primary : scales.primary[400];
+  const darkCanvas = scales.neutral[950];
 
-  const secondaryContrast = getContrastRatio(rawColors.secondary, darkSurface);
-  const darkSecondary = secondaryContrast >= 3.0 ? rawColors.secondary : scales.secondary[400];
+  const promoteDarkRole = (rawHex: string, scale: ShadeScale): string => {
+    const onRaw = getAccessibleTextColor(rawHex);
+    const rawOnSurfaceOk = getContrastRatio(rawHex, darkSurface) >= 3.0;
+    const rawTextOk = getContrastRatio(onRaw, rawHex) >= textTarget;
+    if (rawOnSurfaceOk && rawTextOk) return rawHex;
 
-  const accentContrast = getContrastRatio(rawColors.accent, darkSurface);
-  const darkAccent = accentContrast >= 3.0 ? rawColors.accent : scales.accent[400];
+    // Try lighter scale steps (400 -> 100) that satisfy both darkSurface UI contrast and button text contrast
+    for (const step of [400, 300, 200, 100] as ShadeStep[]) {
+      const candidate = scale[step];
+      const onCandidate = getAccessibleTextColor(candidate);
+      if (
+        getContrastRatio(candidate, darkSurface) >= 3.0 &&
+        getContrastRatio(onCandidate, candidate) >= textTarget
+      ) {
+        return candidate;
+      }
+    }
+    return rawOnSurfaceOk ? rawHex : scale[300];
+  };
+
+  const darkPrimary = promoteDarkRole(rawColors.primary, scales.primary);
+  const darkSecondary = promoteDarkRole(rawColors.secondary, scales.secondary);
+  const darkAccent = promoteDarkRole(rawColors.accent, scales.accent);
+
+  const text = pickContrastStep(scales.neutral, [50, 100], darkCanvas, textTarget, 50);
+  const textSecondary = pickContrastStep(
+    scales.neutral,
+    contrastLevel === 'AAA' ? [200, 100, 50] : [300, 200, 100, 50],
+    darkSurface,
+    textTarget,
+    200
+  );
+  const textMuted = pickContrastStep(
+    scales.neutral,
+    contrastLevel === 'AAA' ? [300, 200, 100, 50] : [400, 300, 200, 100],
+    darkSurface,
+    textTarget,
+    400
+  );
+  const borderStrong = pickContrastStep(
+    scales.neutral,
+    [500, 400, 300, 200, 100],
+    darkCanvas,
+    3.0,
+    500
+  );
 
   return {
-    canvas: scales.neutral[950],
+    canvas: darkCanvas,
     surface: darkSurface,
     surfaceRaised: scales.neutral[800],
     surfaceMuted: scales.neutral[800],
     border: scales.neutral[800],
-    borderStrong: scales.neutral[700],
-    text: scales.neutral[50],
-    textSecondary: scales.neutral[300],
-    textMuted: scales.neutral[400],
+    borderStrong,
+    text,
+    textSecondary,
+    textMuted,
     primary: darkPrimary,
     primaryHover: scales.primary[300],
     onPrimary: getAccessibleTextColor(darkPrimary),

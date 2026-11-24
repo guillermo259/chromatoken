@@ -67,6 +67,7 @@ export interface GeometryConfig {
 export interface DesignTokenState {
   brandName: string;
   harmonyMode: HarmonyMode;
+  contrastLevel: ContrastLevel;
   colors: PaletteColor[];
   typography: TypographyConfig;
   geometry: GeometryConfig;
@@ -74,6 +75,6 @@ export interface DesignTokenState {
 
 export type WorkspaceSection = 'palette' | 'studio' | 'export';
 export type PreviewThemeMode = 'light' | 'dark' | 'split';
-export type ExportTab = 'visual' | 'markdown' | 'json' | 'css' | 'tailwind';
+export type ExportTab = 'markdown' | 'json' | 'css' | 'tailwind';
 
 export type ContrastLevel = 'AA' | 'AAA';

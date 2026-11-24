@@ -6,14 +6,17 @@ import {
   ExportTab,
   GeometryConfig,
   HarmonyMode,
-  PaletteColor,
   PreviewThemeMode,
   TypographyConfig,
   WorkspaceSection,
 } from './types/tokens';
 import { CURATED_PAIRINGS, injectGoogleFontsLink } from './data/googleFonts';
 import { CURATED_PRESETS, generateHarmoniousPalette } from './utils/colorEngine';
-import { decodeStateFromHash, encodeStateToHash } from './utils/tokenExporters';
+import {
+  decodeStateFromHash,
+  encodeStateToHash,
+  sanitizeDesignTokenState,
+} from './utils/tokenExporters';
 import { auditContrast, enforceContrast } from './utils/contrastAudit';
 import { TopBar } from './components/TopBar';
 import { PaletteBoard } from './components/PaletteBoard';
@@ -24,12 +27,14 @@ import { Toast } from './components/Toast';
 import { Footer } from './components/Footer';
 
 const STORAGE_KEY = 'chromatoken_workspace_v1';
-const LEVEL_KEY = 'chromatoken_contrast_level';
-const HISTORY_LIMIT = 30;
+const LEGACY_LEVEL_KEY = 'chromatoken_contrast_level';
+const HISTORY_LIMIT = 40;
+const COALESCE_WINDOW_MS = 380;
 
 const DEFAULT_STATE: DesignTokenState = {
   brandName: 'Acme Studio',
   harmonyMode: 'curated',
+  contrastLevel: 'AA',
   colors: [
     { role: 'primary', label: 'Primary', hex: '#4A7C59', locked: false },
     { role: 'secondary', label: 'Secondary', hex: '#64748B', locked: false },
@@ -59,14 +64,29 @@ const DEFAULT_STATE: DesignTokenState = {
 
 function loadInitialState(): DesignTokenState {
   if (typeof window !== 'undefined') {
-    const fromHash = decodeStateFromHash(window.location.hash);
-    if (fromHash) return fromHash;
+    const fromHash = decodeStateFromHash(window.location.hash, DEFAULT_STATE);
+    if (fromHash) {
+      // Consume the shared hash once into localStorage and clean the URL so subsequent edits persist
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(fromHash));
+      } catch {
+        // Ignore storage quota errors
+      }
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      return fromHash;
+    }
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved) as DesignTokenState;
-        if (parsed && Array.isArray(parsed.colors) && parsed.typography && parsed.geometry) {
-          return parsed;
+        const parsed: unknown = JSON.parse(saved);
+        const sanitized = sanitizeDesignTokenState(parsed, DEFAULT_STATE);
+        if (sanitized) {
+          // Migrate legacy contrast level preference if present on older saved states
+          const rawObj = parsed as Record<string, unknown>;
+          if (!('contrastLevel' in rawObj) && localStorage.getItem(LEGACY_LEVEL_KEY) === 'AAA') {
+            return { ...sanitized, contrastLevel: 'AAA' };
+          }
+          return sanitized;
         }
       }
     } catch {
@@ -76,28 +96,36 @@ function loadInitialState(): DesignTokenState {
   return DEFAULT_STATE;
 }
 
+interface HistoryStore {
+  entries: DesignTokenState[];
+  index: number;
+  lastCoalesceKey: string | null;
+  lastTimestamp: number;
+}
+
 export default function App() {
-  const [state, setState] = useState<DesignTokenState>(loadInitialState);
+  const [initialState] = useState<DesignTokenState>(loadInitialState);
+  const [historyStore, setHistoryStore] = useState<HistoryStore>(() => ({
+    entries: [initialState],
+    index: 0,
+    lastCoalesceKey: null,
+    lastTimestamp: 0,
+  }));
+
+  const state = historyStore.entries[historyStore.index];
+  const canUndo = historyStore.index > 0;
+  const canRedo = historyStore.index < historyStore.entries.length - 1;
+
   const [activeSection, setActiveSection] = useState<WorkspaceSection>('palette');
   const [activeExportTab, setActiveExportTab] = useState<ExportTab>('css');
   const [themeMode, setThemeMode] = useState<PreviewThemeMode>('light');
   const [toast, setToast] = useState<{ id: number; message: string } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
-  const [contrastLevel, setContrastLevel] = useState<ContrastLevel>(() => {
-    try {
-      return localStorage.getItem(LEVEL_KEY) === 'AAA' ? 'AAA' : 'AA';
-    } catch {
-      return 'AA';
-    }
-  });
-  const contrastReport = useMemo(
-    () => auditContrast(state.colors, contrastLevel),
-    [state.colors, contrastLevel]
-  );
 
-  // Undo/redo history for palette-level changes (generate, presets, reorder)
-  const [history, setHistory] = useState<PaletteColor[][]>(() => [state.colors]);
-  const [historyIndex, setHistoryIndex] = useState<number>(0);
+  const contrastReport = useMemo(
+    () => auditContrast(state.colors, state.contrastLevel),
+    [state.colors, state.contrastLevel]
+  );
 
   const notify = useCallback((message: string) => {
     window.clearTimeout(toastTimer.current);
@@ -115,87 +143,173 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(LEVEL_KEY, contrastLevel);
-    } catch {
-      // Preference only; ignore storage errors
-    }
-  }, [contrastLevel]);
-
-  useEffect(() => {
-    try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(LEGACY_LEVEL_KEY, state.contrastLevel);
     } catch {
       // Storage unavailable or full: the session still works in memory
     }
   }, [state]);
 
-  const commitPalette = useCallback(
-    (nextColors: PaletteColor[]) => {
-      setState((prev) => ({ ...prev, colors: nextColors }));
-      setHistory((prev) => [...prev.slice(0, historyIndex + 1), nextColors].slice(-HISTORY_LIMIT));
-      setHistoryIndex((prev) => Math.min(prev + 1, HISTORY_LIMIT - 1));
+  /**
+   * Commits any state transformation to the unified undo/redo history.
+   * When `coalesceKey` matches a continuous edit within COALESCE_WINDOW_MS (e.g. slider drag
+   * or typing), the top entry is updated in place so Ctrl+Z undoes the whole gesture cleanly.
+   */
+  const commitState = useCallback(
+    (updater: (prev: DesignTokenState) => DesignTokenState, coalesceKey: string | null = null) => {
+      const now = Date.now();
+      setHistoryStore((store) => {
+        const current = store.entries[store.index];
+        const next = updater(current);
+        if (next === current) return store;
+
+        const shouldCoalesce =
+          coalesceKey !== null &&
+          store.lastCoalesceKey === coalesceKey &&
+          now - store.lastTimestamp < COALESCE_WINDOW_MS &&
+          store.index > 0;
+
+        if (shouldCoalesce) {
+          const updated = store.entries.slice(0, store.index + 1);
+          updated[store.index] = next;
+          return {
+            entries: updated,
+            index: store.index,
+            lastCoalesceKey: coalesceKey,
+            lastTimestamp: now,
+          };
+        }
+
+        const sliced = store.entries.slice(0, store.index + 1);
+        const entries = [...sliced, next].slice(-HISTORY_LIMIT);
+        return {
+          entries,
+          index: entries.length - 1,
+          lastCoalesceKey: coalesceKey,
+          lastTimestamp: now,
+        };
+      });
     },
-    [historyIndex]
+    []
   );
+
+  const handleUndo = useCallback(() => {
+    setHistoryStore((store) => {
+      if (store.index <= 0) return store;
+      return {
+        ...store,
+        index: store.index - 1,
+        lastCoalesceKey: null,
+        lastTimestamp: 0,
+      };
+    });
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    setHistoryStore((store) => {
+      if (store.index >= store.entries.length - 1) return store;
+      return {
+        ...store,
+        index: store.index + 1,
+        lastCoalesceKey: null,
+        lastTimestamp: 0,
+      };
+    });
+  }, []);
+
+  // Global Undo/Redo keyboard shortcuts across all workspace views
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      ) {
+        const inputType = (target as HTMLInputElement).type;
+        if (inputType !== 'range' && inputType !== 'color') {
+          return;
+        }
+      }
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod) return;
+      const key = e.key.toLowerCase();
+      if (key === 'z' || key === 'y') {
+        e.preventDefault();
+        if (key === 'y' || e.shiftKey) handleRedo();
+        else handleUndo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handleUndo, handleRedo]);
 
   const handleGeneratePalette = useCallback(() => {
     if (state.colors.every((c) => c.locked)) {
       notify('Todos los colores están bloqueados');
       return;
     }
-    commitPalette(generateHarmoniousPalette(state.colors, state.harmonyMode));
-  }, [state.colors, state.harmonyMode, commitPalette, notify]);
+    commitState((prev) => ({
+      ...prev,
+      colors: generateHarmoniousPalette(prev.colors, prev.harmonyMode),
+    }));
+  }, [state.colors, commitState, notify]);
 
   const handleApplyContrastFix = useCallback(
     (role: ColorRole, hex: string) => {
-      commitPalette(state.colors.map((c) => (c.role === role ? { ...c, hex } : c)));
+      commitState((prev) => ({
+        ...prev,
+        colors: prev.colors.map((c) => (c.role === role ? { ...c, hex } : c)),
+      }));
       notify(`${role.charAt(0).toUpperCase()}${role.slice(1)} ajustado a ${hex}`);
     },
-    [state.colors, commitPalette, notify]
+    [commitState, notify]
   );
 
   const handleFixAllContrast = useCallback(() => {
-    const next = enforceContrast(state.colors, contrastLevel);
-    const changed = next.filter((c, i) => c.hex !== state.colors[i].hex).length;
+    const nextColors = enforceContrast(state.colors, state.contrastLevel);
+    const changed = nextColors.filter((c, i) => c.hex !== state.colors[i].hex).length;
     if (changed === 0) return;
-    commitPalette(next);
-    notify(changed === 1 ? '1 color ajustado' : `${changed} colores ajustados`);
-  }, [state.colors, contrastLevel, commitPalette, notify]);
+    commitState((prev) => ({ ...prev, colors: nextColors }));
+    const after = auditContrast(nextColors, state.contrastLevel);
+    const baseMsg = changed === 1 ? '1 color ajustado' : `${changed} colores ajustados`;
+    if (after.failures.length > 0) {
+      notify(`${baseMsg} · quedan ${after.failures.length} avisos`);
+    } else {
+      notify(baseMsg);
+    }
+  }, [state.colors, state.contrastLevel, commitState, notify]);
 
   const contrastProps = {
     report: contrastReport,
-    onLevelChange: setContrastLevel,
+    onLevelChange: (contrastLevel: ContrastLevel) =>
+      commitState((prev) => ({ ...prev, contrastLevel })),
     onApplyFix: handleApplyContrastFix,
     onFixAll: handleFixAllContrast,
   };
 
-  const handleUndo = useCallback(() => {
-    if (historyIndex <= 0) return;
-    const nextIdx = historyIndex - 1;
-    setHistoryIndex(nextIdx);
-    setState((prev) => ({ ...prev, colors: history[nextIdx] }));
-  }, [history, historyIndex]);
+  const handleUpdateColor = useCallback(
+    (role: ColorRole, hex: string) => {
+      commitState(
+        (prev) => ({
+          ...prev,
+          colors: prev.colors.map((c) => (c.role === role ? { ...c, hex } : c)),
+        }),
+        `color-${role}`
+      );
+    },
+    [commitState]
+  );
 
-  const handleRedo = useCallback(() => {
-    if (historyIndex >= history.length - 1) return;
-    const nextIdx = historyIndex + 1;
-    setHistoryIndex(nextIdx);
-    setState((prev) => ({ ...prev, colors: history[nextIdx] }));
-  }, [history, historyIndex]);
-
-  const handleUpdateColor = useCallback((role: ColorRole, hex: string) => {
-    setState((prev) => ({
-      ...prev,
-      colors: prev.colors.map((c) => (c.role === role ? { ...c, hex } : c)),
-    }));
-  }, []);
-
-  const handleToggleLock = useCallback((role: ColorRole) => {
-    setState((prev) => ({
-      ...prev,
-      colors: prev.colors.map((c) => (c.role === role ? { ...c, locked: !c.locked } : c)),
-    }));
-  }, []);
+  const handleToggleLock = useCallback(
+    (role: ColorRole) => {
+      commitState((prev) => ({
+        ...prev,
+        colors: prev.colors.map((c) => (c.role === role ? { ...c, locked: !c.locked } : c)),
+      }));
+    },
+    [commitState]
+  );
 
   /**
    * Roles are fixed slots (primary, secondary, accent, neutral). Dragging a swatch
@@ -204,62 +318,91 @@ export default function App() {
   const handleMoveColor = useCallback(
     (fromIndex: number, toIndex: number) => {
       if (fromIndex === toIndex) return;
-      const values = state.colors.map(({ hex, locked }) => ({ hex, locked }));
-      const [moved] = values.splice(fromIndex, 1);
-      values.splice(toIndex, 0, moved);
-      commitPalette(state.colors.map((slot, i) => ({ ...slot, ...values[i] })));
+      commitState((prev) => {
+        const values = prev.colors.map(({ hex, locked }) => ({ hex, locked }));
+        const [moved] = values.splice(fromIndex, 1);
+        values.splice(toIndex, 0, moved);
+        return {
+          ...prev,
+          colors: prev.colors.map((slot, i) => ({ ...slot, ...values[i] })),
+        };
+      });
     },
-    [state.colors, commitPalette]
+    [commitState]
   );
 
   const handleApplyPreset = useCallback(
     (presetId: string) => {
       const preset = CURATED_PRESETS.find((p) => p.id === presetId);
       if (!preset) return;
-      commitPalette(
-        state.colors.map((c) => ({ ...c, hex: preset.colors[c.role], locked: false }))
-      );
+      commitState((prev) => ({
+        ...prev,
+        colors: prev.colors.map((c) => ({ ...c, hex: preset.colors[c.role], locked: false })),
+      }));
       notify(`Paleta «${preset.name}» aplicada`);
     },
-    [state.colors, commitPalette, notify]
+    [commitState, notify]
   );
 
-  const handleUpdateTypography = useCallback((patch: Partial<TypographyConfig>) => {
-    setState((prev) => ({ ...prev, typography: { ...prev.typography, ...patch } }));
-  }, []);
+  const handleUpdateTypography = useCallback(
+    (patch: Partial<TypographyConfig>) => {
+      const coalesce =
+        'baseSize' in patch || 'lineHeight' in patch || 'headingTracking' in patch
+          ? `typo-${Object.keys(patch).join(',')}`
+          : null;
+      commitState(
+        (prev) => ({ ...prev, typography: { ...prev.typography, ...patch } }),
+        coalesce
+      );
+    },
+    [commitState]
+  );
 
-  const handleApplyPairing = useCallback((pairingId: string) => {
-    const pairing = CURATED_PAIRINGS.find((p) => p.id === pairingId);
-    if (!pairing) return;
-    setState((prev) => ({
-      ...prev,
-      typography: {
-        ...prev.typography,
-        pairingId: pairing.id,
-        headingFont: pairing.headingFont,
-        headingWeight: pairing.headingWeight,
-        headingTracking: pairing.headingTracking,
-        bodyFont: pairing.bodyFont,
-        bodyWeight: pairing.bodyWeight,
-        monoFont: pairing.monoFont,
-        scaleRatio: pairing.scaleRatio,
-      },
-    }));
-  }, []);
+  const handleApplyPairing = useCallback(
+    (pairingId: string) => {
+      const pairing = CURATED_PAIRINGS.find((p) => p.id === pairingId);
+      if (!pairing) return;
+      commitState((prev) => ({
+        ...prev,
+        typography: {
+          ...prev.typography,
+          pairingId: pairing.id,
+          headingFont: pairing.headingFont,
+          headingWeight: pairing.headingWeight,
+          headingTracking: pairing.headingTracking,
+          bodyFont: pairing.bodyFont,
+          bodyWeight: pairing.bodyWeight,
+          monoFont: pairing.monoFont,
+          scaleRatio: pairing.scaleRatio,
+        },
+      }));
+    },
+    [commitState]
+  );
 
-  const handleUpdateGeometry = useCallback((patch: Partial<GeometryConfig>) => {
-    setState((prev) => ({ ...prev, geometry: { ...prev.geometry, ...patch } }));
-  }, []);
+  const handleUpdateGeometry = useCallback(
+    (patch: Partial<GeometryConfig>) => {
+      const coalesce =
+        'cardPadding' in patch || 'elementGap' in patch
+          ? `geo-${Object.keys(patch).join(',')}`
+          : null;
+      commitState(
+        (prev) => ({ ...prev, geometry: { ...prev.geometry, ...patch } }),
+        coalesce
+      );
+    },
+    [commitState]
+  );
 
   const handleShareUrl = useCallback(async () => {
     const encoded = encodeStateToHash(state);
     if (!encoded) return;
     const shareUrl = `${window.location.origin}${window.location.pathname}#state=${encoded}`;
-    window.history.replaceState(null, '', `#state=${encoded}`);
     try {
       await navigator.clipboard.writeText(shareUrl);
       notify('Enlace copiado. Quien lo abra verá esta misma configuración');
     } catch {
+      window.history.replaceState(null, '', `#state=${encoded}`);
       notify('No se pudo copiar. El enlace quedó en la barra de direcciones');
     }
   }, [state, notify]);
@@ -302,10 +445,10 @@ export default function App() {
           <PaletteBoard
             colors={state.colors}
             harmonyMode={state.harmonyMode}
-            canUndo={historyIndex > 0}
-            canRedo={historyIndex < history.length - 1}
-            onHarmonyChange={(mode: HarmonyMode) =>
-              setState((prev) => ({ ...prev, harmonyMode: mode }))
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onHarmonyChange={(harmonyMode: HarmonyMode) =>
+              commitState((prev) => ({ ...prev, harmonyMode }))
             }
             onGenerate={handleGeneratePalette}
             onUndo={handleUndo}
@@ -324,7 +467,9 @@ export default function App() {
           <main className="flex flex-col lg:flex-row">
             <StudioSidebar
               state={state}
-              onBrandNameChange={(brandName) => setState((prev) => ({ ...prev, brandName }))}
+              onBrandNameChange={(brandName) =>
+                commitState((prev) => ({ ...prev, brandName }), 'brand-name')
+              }
               onUpdateColor={handleUpdateColor}
               onUpdateTypography={handleUpdateTypography}
               onApplyPairing={handleApplyPairing}

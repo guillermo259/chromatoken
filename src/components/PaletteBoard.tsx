@@ -595,19 +595,12 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
     };
   }, []);
 
-  // Space generates, Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z or Ctrl+Y redoes
+  // Space generates new unlocked colors (Undo/Redo handled globally in App.tsx)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (activeId || openTuner || contrastOpen || e.defaultPrevented) return;
       if (shouldIgnoreShortcut(e.target, keyboardNav.current)) return;
       const mod = e.metaKey || e.ctrlKey;
-      const key = e.key.toLowerCase();
-      if (mod && (key === 'z' || key === 'y')) {
-        e.preventDefault();
-        if (key === 'y' || e.shiftKey) onRedo();
-        else onUndo();
-        return;
-      }
       if (e.code === 'Space' && !mod && !e.repeat) {
         e.preventDefault();
         onGenerate();
@@ -615,7 +608,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onGenerate, onUndo, onRedo, activeId, openTuner, contrastOpen]);
+  }, [onGenerate, activeId, openTuner, contrastOpen]);
 
   const indexOfId = (id: string) => order.indexOf(id);
 

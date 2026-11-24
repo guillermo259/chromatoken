@@ -118,6 +118,14 @@ const CHECKS: CheckSpec[] = [
     fg: (t) => t.textMuted,
     bg: (t) => t.surface,
   },
+  {
+    id: 'border-input',
+    role: 'neutral',
+    kind: 'ui',
+    label: 'Borde de campos y controles sobre lienzo',
+    fg: (t) => t.borderStrong,
+    bg: (t) => t.canvas,
+  },
 ];
 
 const MODES: ThemeMode[] = ['light', 'dark'];
@@ -141,17 +149,17 @@ export function formatRatio(ratio: number): string {
   return (Math.floor(ratio * 100) / 100).toFixed(2);
 }
 
-function themesFor(colors: PaletteColor[]): Record<ThemeMode, SemanticThemeColors> {
+function themesFor(colors: PaletteColor[], level: ContrastLevel): Record<ThemeMode, SemanticThemeColors> {
   const scales = buildAllScales(colors);
   const raw = Object.fromEntries(colors.map((c) => [c.role, c.hex])) as Record<ColorRole, string>;
   return {
-    light: deriveSemanticTheme(scales, raw, 'light'),
-    dark: deriveSemanticTheme(scales, raw, 'dark'),
+    light: deriveSemanticTheme(scales, raw, 'light', level),
+    dark: deriveSemanticTheme(scales, raw, 'dark', level),
   };
 }
 
 function runChecks(colors: PaletteColor[], level: ContrastLevel, only?: ColorRole): ContrastCheck[] {
-  const themes = themesFor(colors);
+  const themes = themesFor(colors, level);
   const out: ContrastCheck[] = [];
   for (const mode of MODES) {
     for (const spec of CHECKS) {

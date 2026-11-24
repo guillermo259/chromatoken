@@ -41,11 +41,11 @@ Todo corre en el navegador: no hay servidor, no hay cuentas y no se envían dato
   <img src="docs/assets/demo.gif" alt="Generar paletas con la barra espaciadora y arrastrar un color de un rol a otro" width="100%">
 </p>
 
-- **Genera** paletas con la barra espaciadora, siguiendo una regla de armonía: curada, análoga, complementaria, triádica, monocromática o alto contraste.
+- **Genera** paletas en espacio perceptual **OKLCH** con la barra espaciadora, siguiendo una regla de armonía: curada, análoga, complementaria, complementaria dividida, triádica, cuadrática, monocromática o alto contraste.
 - **Bloquea** los colores que quieras conservar. Generar solo cambia los demás.
 - **Arrastra** un color de un rol a otro (Primary, Secondary, Accent, Neutral) con el asa ⋮⋮. Funciona con ratón, con pantalla táctil y con teclado.
-- **Ajusta** cada color por matiz, saturación y luminosidad, o elige un tono de su escala 50–950.
-- Parte de una de las **paletas base**, y **deshaz o rehaz** cualquier cambio.
+- **Ajusta** cada color por matiz, saturación y luminosidad, o elige un tono de su escala monótona 50–950.
+- Parte de una de las **paletas base**, y **deshaz o rehaz** cualquier cambio (colores, bloqueos, tipografía o geometría).
 
 <table>
   <tr>
@@ -70,12 +70,13 @@ ChromaToken no compara cada color con blanco y negro: revisa las **combinaciones
 
 - Texto sobre los botones primario, secundario y de acento.
 - El primario usado como foco, icono o borde activo.
-- El texto principal, el secundario y el atenuado sobre el fondo.
+- El texto principal, el secundario y el atenuado sobre el fondo, y el borde de campos y controles (`3:1` WCAG 1.4.11).
 
-El texto necesita **4.5:1** en nivel AA y **7:1** en nivel AAA. Los elementos de interfaz necesitan **3:1**.
+El texto necesita **4.5:1** en nivel AA y **7:1** en nivel AAA. Los elementos de interfaz y bordes necesitan **3:1**.
 
-- Los colores que genera **ya cumplen**: si una combinación falla, se ajusta solo la luminosidad, así que el matiz y la armonía se conservan.
-- Los colores **bloqueados nunca se cambian solos**. Si fallan, la herramienta avisa y propone el tono más cercano que cumple.
+- El generador prioriza la **libertad cromática** en OKLCH y audita cada combinación en tiempo real sin deformar los tonos al generar.
+- Si alguna combinación falla en AA o AAA, el indicador de contraste avisa y propone el ajuste mínimo de luminosidad para los roles desbloqueados.
+- Los colores **bloqueados nunca se cambian solos**.
 - **Corregir** aplica la propuesta con un clic, y se puede deshacer.
 
 ### 2 · Sistema
@@ -118,15 +119,13 @@ El texto necesita **4.5:1** en nivel AA y **7:1** en nivel AAA. Los elementos de
 Requisitos: **Node.js 20.19+ o 22.12+** y npm.
 
 ```bash
-git clone https://github.com/guillermo259/tokengenerator.git
-cd tokengenerator
+git clone https://github.com/<tu-usuario>/chromatoken.git
+cd chromatoken
 npm install
 npm run dev
 ```
 
 La app queda en `http://localhost:3000`.
-
-No hace falta configurar variables de entorno. `.env.example` viene de la plantilla original de AI Studio, y la app actual no lo usa.
 
 | Comando | Qué hace |
 | --- | --- |

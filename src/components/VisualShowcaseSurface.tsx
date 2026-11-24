@@ -15,6 +15,7 @@ import {
   getSpacingScale,
   getTypeScale,
 } from '../utils/tokenExporters';
+import { auditContrast } from '../utils/contrastAudit';
 
 interface VisualShowcaseSurfaceProps {
   state: DesignTokenState;
@@ -31,6 +32,8 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
   const [switchActive, setSwitchActive] = useState(true);
   const [inputValue, setInputValue] = useState('design-system@acme.studio');
   const [inputFocused, setInputFocused] = useState(false);
+  const [selectedBtn, setSelectedBtn] = useState<{ label: string; token: string; hex: string } | null>(null);
+  const [reportExpanded, setReportExpanded] = useState(false);
 
   const scales = buildAllScales(state.colors);
   const rawMap = state.colors.reduce(
@@ -41,7 +44,8 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
     {} as Record<ColorRole, string>
   );
 
-  const theme = deriveSemanticTheme(scales, rawMap, mode);
+  const theme = deriveSemanticTheme(scales, rawMap, mode, state.contrastLevel);
+  const contrastReport = auditContrast(state.colors, state.contrastLevel);
   const typeScale = getTypeScale(state.typography.baseSize, state.typography.scaleRatio);
   const radii = getRadiusScale(state.geometry.radiusBase);
   const spacing = getSpacingScale(state.geometry.spacingUnit);
@@ -365,98 +369,105 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
           </h3>
 
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              style={{
-                backgroundColor: theme.primary,
-                color: theme.onPrimary,
-                borderRadius: `${radii.md}px`,
-                fontFamily: bodyStyle.fontFamily,
-                fontWeight: 600,
-                fontSize: `${typeScale.sm}px`,
-                boxShadow: shadows.sm,
-              }}
-              className="px-4 py-2 transition-opacity hover:opacity-90 cursor-pointer whitespace-nowrap"
-            >
-              Primario
-            </button>
-
-            <button
-              type="button"
-              style={{
-                backgroundColor: theme.secondary,
-                color: theme.onSecondary,
-                borderRadius: `${radii.md}px`,
-                fontFamily: bodyStyle.fontFamily,
-                fontWeight: 600,
-                fontSize: `${typeScale.sm}px`,
-              }}
-              className="px-4 py-2 transition-opacity hover:opacity-90 cursor-pointer whitespace-nowrap"
-            >
-              Secundario
-            </button>
-
-            <button
-              type="button"
-              style={{
-                backgroundColor: theme.accent,
-                color: theme.onAccent,
-                borderRadius: `${radii.md}px`,
-                fontFamily: bodyStyle.fontFamily,
-                fontWeight: 600,
-                fontSize: `${typeScale.sm}px`,
-              }}
-              className="px-4 py-2 transition-opacity hover:opacity-90 cursor-pointer whitespace-nowrap"
-            >
-              Acento
-            </button>
-
-            <button
-              type="button"
-              style={{
-                backgroundColor: theme.surface,
-                color: theme.text,
-                borderColor: theme.borderStrong,
-                borderRadius: `${radii.md}px`,
-                fontFamily: bodyStyle.fontFamily,
-                fontWeight: 600,
-                fontSize: `${typeScale.sm}px`,
-              }}
-              className="border px-4 py-2 transition-opacity hover:opacity-80 cursor-pointer whitespace-nowrap"
-            >
-              Outline
-            </button>
-
-            <button
-              type="button"
-              style={{
-                backgroundColor: 'transparent',
-                color: theme.textSecondary,
-                borderRadius: `${radii.md}px`,
-                fontFamily: bodyStyle.fontFamily,
-                fontWeight: 600,
-                fontSize: `${typeScale.sm}px`,
-              }}
-              className="px-4 py-2 transition-opacity hover:opacity-75 cursor-pointer whitespace-nowrap"
-            >
-              Ghost
-            </button>
-
-            <button
-              type="button"
-              style={{
-                backgroundColor: theme.destructive,
-                color: '#FFFFFF',
-                borderRadius: `${radii.md}px`,
-                fontFamily: bodyStyle.fontFamily,
-                fontWeight: 600,
-                fontSize: `${typeScale.sm}px`,
-              }}
-              className="px-4 py-2 transition-opacity hover:opacity-90 cursor-pointer whitespace-nowrap"
-            >
-              Destructive
-            </button>
+            {[
+              {
+                label: 'Primario',
+                token: '--color-primary',
+                hex: theme.primary,
+                style: {
+                  backgroundColor: theme.primary,
+                  color: theme.onPrimary,
+                  boxShadow: shadows.sm,
+                },
+                border: false,
+              },
+              {
+                label: 'Secundario',
+                token: '--color-secondary',
+                hex: theme.secondary,
+                style: {
+                  backgroundColor: theme.secondary,
+                  color: theme.onSecondary,
+                },
+                border: false,
+              },
+              {
+                label: 'Acento',
+                token: '--color-accent',
+                hex: theme.accent,
+                style: {
+                  backgroundColor: theme.accent,
+                  color: theme.onAccent,
+                },
+                border: false,
+              },
+              {
+                label: 'Outline',
+                token: '--color-border-strong',
+                hex: theme.borderStrong,
+                style: {
+                  backgroundColor: theme.surface,
+                  color: theme.text,
+                  borderColor: theme.borderStrong,
+                },
+                border: true,
+              },
+              {
+                label: 'Ghost',
+                token: '--color-text-secondary',
+                hex: theme.textSecondary,
+                style: {
+                  backgroundColor: 'transparent',
+                  color: theme.textSecondary,
+                },
+                border: false,
+              },
+              {
+                label: 'Destructive',
+                token: '--color-destructive',
+                hex: theme.destructive,
+                style: {
+                  backgroundColor: theme.destructive,
+                  color: '#FFFFFF',
+                },
+                border: false,
+              },
+            ].map((btn) => {
+              const isSelected = selectedBtn?.label === btn.label;
+              return (
+                <button
+                  key={btn.label}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() =>
+                    setSelectedBtn(
+                      isSelected ? null : { label: btn.label, token: btn.token, hex: btn.hex }
+                    )
+                  }
+                  style={{
+                    ...btn.style,
+                    borderRadius: `${radii.md}px`,
+                    fontFamily: bodyStyle.fontFamily,
+                    fontWeight: 600,
+                    fontSize: `${typeScale.sm}px`,
+                    outline: isSelected ? `2px solid ${theme.primary}` : undefined,
+                    outlineOffset: isSelected ? '2px' : undefined,
+                  }}
+                  className={`${btn.border ? 'border ' : ''}px-4 py-2 transition-opacity hover:opacity-90 cursor-pointer whitespace-nowrap`}
+                >
+                  {btn.label}
+                </button>
+              );
+            })}
           </div>
+          {selectedBtn && (
+            <p
+              style={{ ...monoStyle, color: theme.textMuted }}
+              className="mt-3 text-xs"
+            >
+              Botón «{selectedBtn.label}» · {selectedBtn.token} ({selectedBtn.hex})
+            </p>
+          )}
         </section>
 
         {/* 04. Cards, Elevations & Spacing */}
@@ -660,7 +671,11 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   className="flex items-center gap-2 px-3 py-2 text-xs font-medium"
                 >
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span>Contraste AA verificado en la escala.</span>
+                  <span>
+                    {contrastReport.failures.length === 0
+                      ? `Contraste ${state.contrastLevel} verificado (${contrastReport.passed}/${contrastReport.total}).`
+                      : `Sistema sincronizado (${contrastReport.passed}/${contrastReport.total} pares ${state.contrastLevel}).`}
+                  </span>
                 </div>
                 <div
                   style={{
@@ -671,7 +686,11 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   className="flex items-center gap-2 px-3 py-2 text-xs font-medium"
                 >
                   <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>Atención: Revisa el peso en cuerpos menores a 13px.</span>
+                  <span>
+                    {contrastReport.failures.length > 0
+                      ? `Atención: ${contrastReport.failures.length} ${contrastReport.failures.length === 1 ? 'combinación requiere' : 'combinaciones requieren'} ajuste para ${state.contrastLevel}.`
+                      : 'Atención: Revisa el peso en cuerpos menores a 13px.'}
+                  </span>
                 </div>
                 <div
                   style={{
@@ -765,6 +784,28 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                     +0.64% vs oct
                   </div>
                 </div>
+                {reportExpanded && (
+                  <div
+                    style={{
+                      borderColor: theme.border,
+                      color: theme.textSecondary,
+                    }}
+                    className="mt-3 space-y-1.5 border-t pt-3 text-xs"
+                  >
+                    <div className="flex justify-between">
+                      <span>Tráfico orgánico</span>
+                      <span style={monoStyle}>2.91%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Acceso directo</span>
+                      <span style={monoStyle}>1.18%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Campañas</span>
+                      <span style={monoStyle}>0.73%</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="mt-5 flex items-center justify-between gap-3">
@@ -776,6 +817,8 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                 </span>
                 <button
                   type="button"
+                  aria-expanded={reportExpanded}
+                  onClick={() => setReportExpanded((v) => !v)}
                   style={{
                     backgroundColor: theme.primary,
                     color: theme.onPrimary,
@@ -786,7 +829,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   }}
                   className="inline-flex items-center gap-1.5 px-4 py-2 transition-opacity hover:opacity-90 cursor-pointer whitespace-nowrap"
                 >
-                  Explorar reporte
+                  {reportExpanded ? 'Ocultar detalle' : 'Explorar reporte'}
                   <ArrowUpRight className="h-3.5 w-3.5" />
                 </button>
               </div>

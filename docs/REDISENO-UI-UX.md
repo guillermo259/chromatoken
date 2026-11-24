@@ -82,7 +82,7 @@ Los tokens de la interfaz están definidos en `src/index.css` dentro de `@theme`
 
 ## Navegación y respuesta
 
-- La cabecera tiene un indicador de pasos (1 Color · 2 Sistema · 3 Exportar) que es el mismo control en escritorio y en móvil, y reemplaza al selector duplicado.
+- La cabecera usa un único `<header>` adaptable: indicador de pasos centrado en escritorio y selector compacto debajo en pantallas estrechas dentro de la misma barra fija.
 - «Compartir» está siempre visible en la cabecera.
 - Copiar, compartir y aplicar una paleta muestran un aviso breve, que también se anuncia a lectores de pantalla.
 
@@ -96,10 +96,11 @@ Los tokens de la interfaz están definidos en `src/index.css` dentro de `@theme`
 - Las animaciones se desactivan con `prefers-reduced-motion`.
 - A 390 px de ancho no hay desplazamiento horizontal.
 
-## Lo que no cambió
+## Evolución posterior al rediseño
 
-- **Lógica:** el motor de color, la generación de escalas, los exportadores y el formato del enlace compartido son los mismos. Los enlaces y el estado guardado en `localStorage` siguen funcionando.
-- **Vista previa:** la vista que aplica los tokens del usuario (`VisualShowcaseSurface`) conserva su diseño, porque la pinta el propio sistema del usuario. Solo cambió el texto.
+- **Motor OKLCH y armonías ampliadas:** las armonías (incluyendo *Complementaria dividida* y *Cuadrática*) y las rampas monótonas `50–950` operan en el espacio perceptual **OKLCH**.
+- **Auditoría y exportación alineadas:** los cuatro exportadores emiten los 22 tokens semánticos completos (incluidos estados `success`, `warning`, `destructive`, `surface-raised`, `border-strong` y `primary-hover`) respetando el nivel AA/AAA elegido, y el enlace compartido guarda también el nivel de contraste.
+- **Vista previa:** la vista que aplica los tokens del usuario (`VisualShowcaseSurface`) conserva su diseño, con todos sus controles interactivos conectados y estado de contraste dinámico.
 
 ## Archivos
 

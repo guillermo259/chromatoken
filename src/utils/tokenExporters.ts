@@ -1,7 +1,18 @@
-import { ColorRole, DesignTokenState, ElevationStyle, ShadeScale } from '../types/tokens';
+import {
+  ColorRole,
+  ContrastLevel,
+  DesignTokenState,
+  ElevationStyle,
+  HarmonyMode,
+  PaletteColor,
+  ShadeScale,
+} from '../types/tokens';
 import {
   buildAllScales,
   deriveSemanticTheme,
+  isValidHex,
+  normalizeHex,
+  ROLE_LABELS,
   SHADE_STEPS,
 } from './colorEngine';
 import { getGoogleFontsImportUrl } from '../data/googleFonts';
@@ -122,8 +133,8 @@ function getRawColorMap(state: DesignTokenState): Record<ColorRole, string> {
 export function generateTokensJson(state: DesignTokenState): string {
   const scales = buildAllScales(state.colors);
   const raw = getRawColorMap(state);
-  const light = deriveSemanticTheme(scales, raw, 'light');
-  const dark = deriveSemanticTheme(scales, raw, 'dark');
+  const light = deriveSemanticTheme(scales, raw, 'light', state.contrastLevel);
+  const dark = deriveSemanticTheme(scales, raw, 'dark', state.contrastLevel);
   const typeScale = getTypeScale(state.typography.baseSize, state.typography.scaleRatio);
   const radii = getRadiusScale(state.geometry.radiusBase);
   const spacing = getSpacingScale(state.geometry.spacingUnit);
@@ -137,9 +148,35 @@ export function generateTokensJson(state: DesignTokenState): string {
     return out;
   };
 
+  const buildSemanticMode = (t: typeof light) => ({
+    canvas: { $value: t.canvas, $type: 'color' },
+    surface: { $value: t.surface, $type: 'color' },
+    surfaceRaised: { $value: t.surfaceRaised, $type: 'color' },
+    surfaceMuted: { $value: t.surfaceMuted, $type: 'color' },
+    border: { $value: t.border, $type: 'color' },
+    borderStrong: { $value: t.borderStrong, $type: 'color' },
+    text: { $value: t.text, $type: 'color' },
+    textSecondary: { $value: t.textSecondary, $type: 'color' },
+    textMuted: { $value: t.textMuted, $type: 'color' },
+    primary: { $value: t.primary, $type: 'color' },
+    primaryHover: { $value: t.primaryHover, $type: 'color' },
+    onPrimary: { $value: t.onPrimary, $type: 'color' },
+    secondary: { $value: t.secondary, $type: 'color' },
+    onSecondary: { $value: t.onSecondary, $type: 'color' },
+    accent: { $value: t.accent, $type: 'color' },
+    onAccent: { $value: t.onAccent, $type: 'color' },
+    success: { $value: t.success, $type: 'color' },
+    successSurface: { $value: t.successSurface, $type: 'color' },
+    warning: { $value: t.warning, $type: 'color' },
+    warningSurface: { $value: t.warningSurface, $type: 'color' },
+    destructive: { $value: t.destructive, $type: 'color' },
+    destructiveSurface: { $value: t.destructiveSurface, $type: 'color' },
+  });
+
   const payload = {
     $schema: 'https://tr.designtokens.org/format/',
     brand: state.brandName || 'Untitled System',
+    contrastLevel: state.contrastLevel,
     color: {
       palette: {
         primary: { base: { $value: raw.primary, $type: 'color' }, ...buildRamp(scales.primary) },
@@ -151,36 +188,8 @@ export function generateTokensJson(state: DesignTokenState): string {
         neutral: { base: { $value: raw.neutral, $type: 'color' }, ...buildRamp(scales.neutral) },
       },
       semantic: {
-        light: {
-          canvas: { $value: light.canvas, $type: 'color' },
-          surface: { $value: light.surface, $type: 'color' },
-          surfaceMuted: { $value: light.surfaceMuted, $type: 'color' },
-          border: { $value: light.border, $type: 'color' },
-          text: { $value: light.text, $type: 'color' },
-          textSecondary: { $value: light.textSecondary, $type: 'color' },
-          textMuted: { $value: light.textMuted, $type: 'color' },
-          primary: { $value: light.primary, $type: 'color' },
-          onPrimary: { $value: light.onPrimary, $type: 'color' },
-          secondary: { $value: light.secondary, $type: 'color' },
-          onSecondary: { $value: light.onSecondary, $type: 'color' },
-          accent: { $value: light.accent, $type: 'color' },
-          onAccent: { $value: light.onAccent, $type: 'color' },
-        },
-        dark: {
-          canvas: { $value: dark.canvas, $type: 'color' },
-          surface: { $value: dark.surface, $type: 'color' },
-          surfaceMuted: { $value: dark.surfaceMuted, $type: 'color' },
-          border: { $value: dark.border, $type: 'color' },
-          text: { $value: dark.text, $type: 'color' },
-          textSecondary: { $value: dark.textSecondary, $type: 'color' },
-          textMuted: { $value: dark.textMuted, $type: 'color' },
-          primary: { $value: dark.primary, $type: 'color' },
-          onPrimary: { $value: dark.onPrimary, $type: 'color' },
-          secondary: { $value: dark.secondary, $type: 'color' },
-          onSecondary: { $value: dark.onSecondary, $type: 'color' },
-          accent: { $value: dark.accent, $type: 'color' },
-          onAccent: { $value: dark.onAccent, $type: 'color' },
-        },
+        light: buildSemanticMode(light),
+        dark: buildSemanticMode(dark),
       },
     },
     typography: {
@@ -231,8 +240,8 @@ export function generateTokensJson(state: DesignTokenState): string {
 export function generateCssVariables(state: DesignTokenState): string {
   const scales = buildAllScales(state.colors);
   const raw = getRawColorMap(state);
-  const light = deriveSemanticTheme(scales, raw, 'light');
-  const dark = deriveSemanticTheme(scales, raw, 'dark');
+  const light = deriveSemanticTheme(scales, raw, 'light', state.contrastLevel);
+  const dark = deriveSemanticTheme(scales, raw, 'dark', state.contrastLevel);
   const typeScale = getTypeScale(state.typography.baseSize, state.typography.scaleRatio);
   const radii = getRadiusScale(state.geometry.radiusBase);
   const spacing = getSpacingScale(state.geometry.spacingUnit);
@@ -246,7 +255,30 @@ export function generateCssVariables(state: DesignTokenState): string {
   const rampLines = (role: ColorRole) =>
     SHADE_STEPS.map((s) => `  --color-${role}-${s}: ${scales[role][s]};`).join('\n');
 
-  return `/* ${state.brandName || 'Design System'} — Generated Design Tokens */
+  const semanticBlock = (t: typeof light) => `  --color-canvas: ${t.canvas};
+  --color-surface: ${t.surface};
+  --color-surface-raised: ${t.surfaceRaised};
+  --color-surface-muted: ${t.surfaceMuted};
+  --color-border: ${t.border};
+  --color-border-strong: ${t.borderStrong};
+  --color-text: ${t.text};
+  --color-text-secondary: ${t.textSecondary};
+  --color-text-muted: ${t.textMuted};
+  --color-primary: ${t.primary};
+  --color-primary-hover: ${t.primaryHover};
+  --color-on-primary: ${t.onPrimary};
+  --color-secondary: ${t.secondary};
+  --color-on-secondary: ${t.onSecondary};
+  --color-accent: ${t.accent};
+  --color-on-accent: ${t.onAccent};
+  --color-success: ${t.success};
+  --color-success-surface: ${t.successSurface};
+  --color-warning: ${t.warning};
+  --color-warning-surface: ${t.warningSurface};
+  --color-destructive: ${t.destructive};
+  --color-destructive-surface: ${t.destructiveSurface};`;
+
+  return `/* ${state.brandName || 'Design System'} — Generated Design Tokens (${state.contrastLevel}) */
 @import url("${fontsUrl}");
 
 :root {
@@ -264,21 +296,7 @@ ${rampLines('accent')}
 ${rampLines('neutral')}
 
   /* Semantic Tokens (Light Mode) */
-  --color-canvas: ${light.canvas};
-  --color-surface: ${light.surface};
-  --color-surface-muted: ${light.surfaceMuted};
-  --color-border: ${light.border};
-  --color-border-strong: ${light.borderStrong};
-  --color-text: ${light.text};
-  --color-text-secondary: ${light.textSecondary};
-  --color-text-muted: ${light.textMuted};
-  --color-primary: ${light.primary};
-  --color-primary-hover: ${light.primaryHover};
-  --color-on-primary: ${light.onPrimary};
-  --color-secondary: ${light.secondary};
-  --color-on-secondary: ${light.onSecondary};
-  --color-accent: ${light.accent};
-  --color-on-accent: ${light.onAccent};
+${semanticBlock(light)}
 
   /* Typography */
   --font-heading: "${state.typography.headingFont}", sans-serif;
@@ -319,21 +337,8 @@ ${rampLines('neutral')}
 }
 
 .dark {
-  --color-canvas: ${dark.canvas};
-  --color-surface: ${dark.surface};
-  --color-surface-muted: ${dark.surfaceMuted};
-  --color-border: ${dark.border};
-  --color-border-strong: ${dark.borderStrong};
-  --color-text: ${dark.text};
-  --color-text-secondary: ${dark.textSecondary};
-  --color-text-muted: ${dark.textMuted};
-  --color-primary: ${dark.primary};
-  --color-primary-hover: ${dark.primaryHover};
-  --color-on-primary: ${dark.onPrimary};
-  --color-secondary: ${dark.secondary};
-  --color-on-secondary: ${dark.onSecondary};
-  --color-accent: ${dark.accent};
-  --color-on-accent: ${dark.onAccent};
+  /* Semantic Tokens (Dark Mode) */
+${semanticBlock(dark)}
 
   /* Elevations (Dark Mode) */
   --shadow-sm: ${shadows.dark.sm};
@@ -346,8 +351,8 @@ ${rampLines('neutral')}
 export function generateTailwindConfig(state: DesignTokenState): string {
   const scales = buildAllScales(state.colors);
   const raw = getRawColorMap(state);
-  const light = deriveSemanticTheme(scales, raw, 'light');
-  const dark = deriveSemanticTheme(scales, raw, 'dark');
+  const light = deriveSemanticTheme(scales, raw, 'light', state.contrastLevel);
+  const dark = deriveSemanticTheme(scales, raw, 'dark', state.contrastLevel);
   const radii = getRadiusScale(state.geometry.radiusBase);
   const shadows = getElevationShadows(state.geometry.elevationStyle);
   const fontsUrl = getGoogleFontsImportUrl(
@@ -359,7 +364,30 @@ export function generateTailwindConfig(state: DesignTokenState): string {
   const tailwindRamp = (role: ColorRole) =>
     SHADE_STEPS.map((s) => `  --color-${role}-${s}: ${scales[role][s]};`).join('\n');
 
-  return `/* Tailwind CSS v4 Theme Configuration — ${state.brandName || 'Design System'} */
+  const semanticVarLines = (t: typeof light) => `  --semantic-canvas: ${t.canvas};
+  --semantic-surface: ${t.surface};
+  --semantic-surface-raised: ${t.surfaceRaised};
+  --semantic-surface-muted: ${t.surfaceMuted};
+  --semantic-border: ${t.border};
+  --semantic-border-strong: ${t.borderStrong};
+  --semantic-text: ${t.text};
+  --semantic-text-secondary: ${t.textSecondary};
+  --semantic-text-muted: ${t.textMuted};
+  --semantic-primary: ${t.primary};
+  --semantic-primary-hover: ${t.primaryHover};
+  --semantic-on-primary: ${t.onPrimary};
+  --semantic-secondary: ${t.secondary};
+  --semantic-on-secondary: ${t.onSecondary};
+  --semantic-accent: ${t.accent};
+  --semantic-on-accent: ${t.onAccent};
+  --semantic-success: ${t.success};
+  --semantic-success-surface: ${t.successSurface};
+  --semantic-warning: ${t.warning};
+  --semantic-warning-surface: ${t.warningSurface};
+  --semantic-destructive: ${t.destructive};
+  --semantic-destructive-surface: ${t.destructiveSurface};`;
+
+  return `/* Tailwind CSS v4 Theme Configuration — ${state.brandName || 'Design System'} (${state.contrastLevel}) */
 @import url("${fontsUrl}");
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
@@ -379,10 +407,26 @@ ${tailwindRamp('neutral')}
   /* Semantic Aliases */
   --color-canvas: var(--semantic-canvas);
   --color-surface: var(--semantic-surface);
+  --color-surface-raised: var(--semantic-surface-raised);
+  --color-surface-muted: var(--semantic-surface-muted);
   --color-border: var(--semantic-border);
+  --color-border-strong: var(--semantic-border-strong);
   --color-ink: var(--semantic-text);
+  --color-ink-secondary: var(--semantic-text-secondary);
+  --color-ink-muted: var(--semantic-text-muted);
   --color-brand: var(--semantic-primary);
+  --color-brand-hover: var(--semantic-primary-hover);
+  --color-on-brand: var(--semantic-on-primary);
+  --color-secondary: var(--semantic-secondary);
+  --color-on-secondary: var(--semantic-on-secondary);
   --color-brand-accent: var(--semantic-accent);
+  --color-on-accent: var(--semantic-on-accent);
+  --color-success: var(--semantic-success);
+  --color-success-surface: var(--semantic-success-surface);
+  --color-warning: var(--semantic-warning);
+  --color-warning-surface: var(--semantic-warning-surface);
+  --color-destructive: var(--semantic-destructive);
+  --color-destructive-surface: var(--semantic-destructive-surface);
 
   /* Border Radius */
   --radius-sm: ${radii.sm}px;
@@ -401,24 +445,14 @@ ${tailwindRamp('neutral')}
 }
 
 :root {
-  --semantic-canvas: ${light.canvas};
-  --semantic-surface: ${light.surface};
-  --semantic-border: ${light.border};
-  --semantic-text: ${light.text};
-  --semantic-primary: ${light.primary};
-  --semantic-accent: ${light.accent};
+${semanticVarLines(light)}
   --semantic-shadow-sm: ${shadows.light.sm};
   --semantic-shadow-md: ${shadows.light.md};
   --semantic-shadow-lg: ${shadows.light.lg};
 }
 
 .dark {
-  --semantic-canvas: ${dark.canvas};
-  --semantic-surface: ${dark.surface};
-  --semantic-border: ${dark.border};
-  --semantic-text: ${dark.text};
-  --semantic-primary: ${dark.primary};
-  --semantic-accent: ${dark.accent};
+${semanticVarLines(dark)}
   --semantic-shadow-sm: ${shadows.dark.sm};
   --semantic-shadow-md: ${shadows.dark.md};
   --semantic-shadow-lg: ${shadows.dark.lg};
@@ -429,8 +463,8 @@ ${tailwindRamp('neutral')}
 export function generateDesignTokenMd(state: DesignTokenState): string {
   const scales = buildAllScales(state.colors);
   const raw = getRawColorMap(state);
-  const light = deriveSemanticTheme(scales, raw, 'light');
-  const dark = deriveSemanticTheme(scales, raw, 'dark');
+  const light = deriveSemanticTheme(scales, raw, 'light', state.contrastLevel);
+  const dark = deriveSemanticTheme(scales, raw, 'dark', state.contrastLevel);
   const typeScale = getTypeScale(state.typography.baseSize, state.typography.scaleRatio);
   const radii = getRadiusScale(state.geometry.radiusBase);
   const shadows = getElevationShadows(state.geometry.elevationStyle);
@@ -442,7 +476,7 @@ export function generateDesignTokenMd(state: DesignTokenState): string {
 
   return `# ${state.brandName || 'Design System'} — designtoken.md
 
-> Especificación de tokens de diseño lista para desarrollo web y agentes de código.
+> Especificación de tokens de diseño lista para desarrollo web y agentes de código (nivel objetivo: WCAG 2.2 ${state.contrastLevel}).
 
 ## 1. Paleta Cromática
 
@@ -459,11 +493,23 @@ export function generateDesignTokenMd(state: DesignTokenState): string {
 | --- | --- | --- |
 | \`canvas\` | \`${light.canvas}\` | \`${dark.canvas}\` |
 | \`surface\` | \`${light.surface}\` | \`${dark.surface}\` |
+| \`surface-raised\` | \`${light.surfaceRaised}\` | \`${dark.surfaceRaised}\` |
+| \`surface-muted\` | \`${light.surfaceMuted}\` | \`${dark.surfaceMuted}\` |
 | \`border\` | \`${light.border}\` | \`${dark.border}\` |
+| \`border-strong\` | \`${light.borderStrong}\` | \`${dark.borderStrong}\` |
 | \`text\` | \`${light.text}\` | \`${dark.text}\` |
+| \`text-secondary\` | \`${light.textSecondary}\` | \`${dark.textSecondary}\` |
 | \`text-muted\` | \`${light.textMuted}\` | \`${dark.textMuted}\` |
 | \`primary\` | \`${light.primary}\` | \`${dark.primary}\` |
+| \`primary-hover\` | \`${light.primaryHover}\` | \`${dark.primaryHover}\` |
 | \`on-primary\` | \`${light.onPrimary}\` | \`${dark.onPrimary}\` |
+| \`secondary\` | \`${light.secondary}\` | \`${dark.secondary}\` |
+| \`on-secondary\` | \`${light.onSecondary}\` | \`${dark.onSecondary}\` |
+| \`accent\` | \`${light.accent}\` | \`${dark.accent}\` |
+| \`on-accent\` | \`${light.onAccent}\` | \`${dark.onAccent}\` |
+| \`success\` / \`success-surface\` | \`${light.success}\` / \`${light.successSurface}\` | \`${dark.success}\` / \`${dark.successSurface}\` |
+| \`warning\` / \`warning-surface\` | \`${light.warning}\` / \`${light.warningSurface}\` | \`${dark.warning}\` / \`${dark.warningSurface}\` |
+| \`destructive\` / \`destructive-surface\` | \`${light.destructive}\` / \`${light.destructiveSurface}\` | \`${dark.destructive}\` / \`${dark.destructiveSurface}\` |
 
 ## 2. Tipografía (Google Fonts)
 
@@ -496,21 +542,140 @@ ${contrastSection(state)}`;
 }
 
 function contrastSection(state: DesignTokenState): string {
-  const report = auditContrast(state.colors, 'AA');
+  const level = state.contrastLevel;
+  const report = auditContrast(state.colors, level);
+  const textMin = level === 'AAA' ? '7:1' : '4.5:1';
   const rows = report.checks
     .map(
       (c) =>
         `| ${c.label} | ${MODE_LABELS[c.mode]} | \`${c.fg}\` sobre \`${c.bg}\` | ${formatRatio(c.ratio)}:1 | ${c.required}:1 | ${c.passes ? 'Cumple' : '**No cumple**'} |`
     )
     .join('\n');
-  return `## 4. Accesibilidad (contraste WCAG 2.2 AA)
+  return `## 4. Accesibilidad (contraste WCAG 2.2 ${level})
 
-${report.passed} de ${report.total} combinaciones cumplen. Texto: 4.5:1. Elementos de interfaz: 3:1.
+${report.passed} de ${report.total} combinaciones cumplen. Texto: ${textMin}. Elementos de interfaz y bordes: 3:1.
 
 | Combinación | Modo | Colores | Ratio | Mínimo | Estado |
 | --- | --- | --- | --- | --- | --- |
 ${rows}
 `;
+}
+
+const VALID_HARMONIES: HarmonyMode[] = [
+  'curated',
+  'analogous',
+  'complementary',
+  'split-complementary',
+  'triadic',
+  'tetradic',
+  'monochromatic',
+  'high-contrast',
+];
+
+const VALID_ELEVATIONS: ElevationStyle[] = ['flat', 'soft', 'crisp', 'elevated'];
+const REQUIRED_ROLES: ColorRole[] = ['primary', 'secondary', 'accent', 'neutral'];
+
+function clampNum(val: unknown, min: number, max: number, fallback: number): number {
+  return typeof val === 'number' && Number.isFinite(val) ? Math.min(max, Math.max(min, val)) : fallback;
+}
+
+/**
+ * Validates and normalizes an untrusted parsed JSON object (from localStorage or URL hash)
+ * into a complete DesignTokenState. Returns null if the core color roles are invalid/missing.
+ */
+export function sanitizeDesignTokenState(
+  raw: unknown,
+  fallback: DesignTokenState
+): DesignTokenState | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const obj = raw as Record<string, unknown>;
+
+  if (!Array.isArray(obj.colors)) return null;
+  const normalizedColors: PaletteColor[] = [];
+  for (const role of REQUIRED_ROLES) {
+    const found = obj.colors.find(
+      (c): c is Record<string, unknown> =>
+        !!c && typeof c === 'object' && (c as Record<string, unknown>).role === role
+    );
+    if (!found || typeof found.hex !== 'string' || !isValidHex(found.hex)) {
+      return null;
+    }
+    normalizedColors.push({
+      role,
+      label: ROLE_LABELS[role],
+      hex: normalizeHex(found.hex),
+      locked: Boolean(found.locked),
+    });
+  }
+
+  const typoObj =
+    obj.typography && typeof obj.typography === 'object'
+      ? (obj.typography as Record<string, unknown>)
+      : {};
+  const geoObj =
+    obj.geometry && typeof obj.geometry === 'object'
+      ? (obj.geometry as Record<string, unknown>)
+      : {};
+
+  const harmonyMode =
+    typeof obj.harmonyMode === 'string' && VALID_HARMONIES.includes(obj.harmonyMode as HarmonyMode)
+      ? (obj.harmonyMode as HarmonyMode)
+      : fallback.harmonyMode;
+
+  const contrastLevel: ContrastLevel =
+    obj.contrastLevel === 'AAA' || obj.contrastLevel === 'AA'
+      ? obj.contrastLevel
+      : fallback.contrastLevel;
+
+  const elevationStyle =
+    typeof geoObj.elevationStyle === 'string' &&
+    VALID_ELEVATIONS.includes(geoObj.elevationStyle as ElevationStyle)
+      ? (geoObj.elevationStyle as ElevationStyle)
+      : fallback.geometry.elevationStyle;
+
+  return {
+    brandName:
+      typeof obj.brandName === 'string' ? obj.brandName.slice(0, 60) : fallback.brandName,
+    harmonyMode,
+    contrastLevel,
+    colors: normalizedColors,
+    typography: {
+      pairingId:
+        typeof typoObj.pairingId === 'string' && typoObj.pairingId.trim()
+          ? typoObj.pairingId
+          : fallback.typography.pairingId,
+      headingFont:
+        typeof typoObj.headingFont === 'string' && typoObj.headingFont.trim()
+          ? typoObj.headingFont
+          : fallback.typography.headingFont,
+      headingWeight: clampNum(typoObj.headingWeight, 300, 900, fallback.typography.headingWeight),
+      headingTracking: clampNum(
+        typoObj.headingTracking,
+        -0.06,
+        0.05,
+        fallback.typography.headingTracking
+      ),
+      bodyFont:
+        typeof typoObj.bodyFont === 'string' && typoObj.bodyFont.trim()
+          ? typoObj.bodyFont
+          : fallback.typography.bodyFont,
+      bodyWeight: clampNum(typoObj.bodyWeight, 300, 800, fallback.typography.bodyWeight),
+      monoFont:
+        typeof typoObj.monoFont === 'string' && typoObj.monoFont.trim()
+          ? typoObj.monoFont
+          : fallback.typography.monoFont,
+      baseSize: clampNum(typoObj.baseSize, 12, 22, fallback.typography.baseSize),
+      scaleRatio: clampNum(typoObj.scaleRatio, 1.05, 1.5, fallback.typography.scaleRatio),
+      lineHeight: clampNum(typoObj.lineHeight, 1.2, 2.0, fallback.typography.lineHeight),
+    },
+    geometry: {
+      radiusBase: clampNum(geoObj.radiusBase, 0, 32, fallback.geometry.radiusBase),
+      spacingUnit: geoObj.spacingUnit === 8 ? 8 : 4,
+      cardPadding: clampNum(geoObj.cardPadding, 12, 48, fallback.geometry.cardPadding),
+      elementGap: clampNum(geoObj.elementGap, 4, 40, fallback.geometry.elementGap),
+      elevationStyle,
+    },
+  };
 }
 
 export function encodeStateToHash(state: DesignTokenState): string {
@@ -527,18 +692,18 @@ export function encodeStateToHash(state: DesignTokenState): string {
   }
 }
 
-export function decodeStateFromHash(hash: string): DesignTokenState | null {
+export function decodeStateFromHash(
+  hash: string,
+  fallback: DesignTokenState
+): DesignTokenState | null {
   try {
     const cleaned = hash.replace(/^#state=/, '').trim();
     if (!cleaned) return null;
     const bin = atob(cleaned);
     const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
     const json = new TextDecoder().decode(bytes);
-    const parsed = JSON.parse(json) as DesignTokenState;
-    if (parsed && Array.isArray(parsed.colors) && parsed.typography && parsed.geometry) {
-      return parsed;
-    }
-    return null;
+    const parsed: unknown = JSON.parse(json);
+    return sanitizeDesignTokenState(parsed, fallback);
   } catch {
     return null;
   }

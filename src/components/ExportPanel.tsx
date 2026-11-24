@@ -18,7 +18,7 @@ interface ExportPanelProps {
 }
 
 interface ExportFormat {
-  id: Exclude<ExportTab, 'visual'>;
+  id: ExportTab;
   filename: string;
   name: string;
   useFor: string;
