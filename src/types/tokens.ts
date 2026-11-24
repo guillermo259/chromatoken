@@ -73,3 +73,5 @@ export interface DesignTokenState {
 export type WorkspaceSection = 'palette' | 'studio' | 'export';
 export type PreviewThemeMode = 'light' | 'dark' | 'split';
 export type ExportTab = 'visual' | 'markdown' | 'json' | 'css' | 'tailwind';
+
+export type ContrastLevel = 'AA' | 'AAA';

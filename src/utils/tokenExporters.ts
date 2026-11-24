@@ -5,6 +5,7 @@ import {
   SHADE_STEPS,
 } from './colorEngine';
 import { getGoogleFontsImportUrl } from '../data/googleFonts';
+import { auditContrast, formatRatio, MODE_LABELS } from './contrastAudit';
 
 export interface DerivedShadows {
   light: { sm: string; md: string; lg: string };
@@ -490,6 +491,25 @@ export function generateDesignTokenMd(state: DesignTokenState): string {
 - **Estilo de Elevación**: \`${state.geometry.elevationStyle}\`
   - Light \`shadow-md\`: \`${shadows.light.md}\`
   - Dark \`shadow-md\`: \`${shadows.dark.md}\`
+
+${contrastSection(state)}`;
+}
+
+function contrastSection(state: DesignTokenState): string {
+  const report = auditContrast(state.colors, 'AA');
+  const rows = report.checks
+    .map(
+      (c) =>
+        `| ${c.label} | ${MODE_LABELS[c.mode]} | \`${c.fg}\` sobre \`${c.bg}\` | ${formatRatio(c.ratio)}:1 | ${c.required}:1 | ${c.passes ? 'Cumple' : '**No cumple**'} |`
+    )
+    .join('\n');
+  return `## 4. Accesibilidad (contraste WCAG 2.2 AA)
+
+${report.passed} de ${report.total} combinaciones cumplen. Texto: 4.5:1. Elementos de interfaz: 3:1.
+
+| Combinación | Modo | Colores | Ratio | Mínimo | Estado |
+| --- | --- | --- | --- | --- | --- |
+${rows}
 `;
 }
 

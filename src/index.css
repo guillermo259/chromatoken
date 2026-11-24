@@ -1,39 +1,110 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Chrome tokens for the ChromaToken interface itself.
+ * The user's palette is the subject of the tool, so the shell stays quiet:
+ * a cool paper ground, near-black ink, and one signal color used sparingly.
+ */
+@theme {
+  --color-ground: #eeede8;
+  --color-panel: #f8f8f5;
+  --color-sheet: #ffffff;
+  --color-ink: #161614;
+  --color-ink-soft: #3a3a36;
+  --color-muted: #64645e;
+  --color-line: #d9d8d1;
+  --color-line-soft: #e6e5df;
+  --color-signal: #ff5b2e;
+  --color-signal-ink: #b8360f;
+
+  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --ease-snap: cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
 @layer base {
   :root {
-    --font-ui-display: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-ui-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-ui-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+    --font-ui-display: var(--font-display);
+    --font-ui-sans: var(--font-sans);
+    --font-ui-mono: var(--font-mono);
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    background: var(--color-ground);
+    color: var(--color-ink);
   }
 
   body {
-    font-family: var(--font-ui-sans);
+    font-family: var(--font-sans);
+    font-variation-settings: "wdth" 100;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: var(--color-ink);
+    color: var(--color-ground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  [role="button"],
+  summary,
+  select,
+  input[type="color"] {
+    cursor: pointer;
+  }
+
+  kbd {
+    font-family: var(--font-mono);
   }
 }
 
+/* Wide display cut of Archivo for headings and the wordmark */
 .font-ui-display {
-  font-family: var(--font-ui-display);
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 118;
 }
 
 .font-ui-sans {
-  font-family: var(--font-ui-sans);
+  font-family: var(--font-sans);
 }
 
 .font-ui-mono {
-  font-family: var(--font-ui-mono);
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-/* Custom sleek range input for manual H/S/L and scale sliders */
+.font-wide {
+  font-variation-settings: "wdth" 125;
+}
+
+.font-narrow {
+  font-variation-settings: "wdth" 80;
+}
+
+/* Range input shared by every tuning control */
 input[type="range"].studio-slider {
   -webkit-appearance: none;
   appearance: none;
-  height: 6px;
+  height: 4px;
   border-radius: 9999px;
-  background: #e2e8f0;
+  background: var(--color-line);
   outline: none;
+}
+
+input[type="range"].studio-slider:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 6px;
 }
 
 input[type="range"].studio-slider::-webkit-slider-thumb {
@@ -41,24 +112,75 @@ input[type="range"].studio-slider::-webkit-slider-thumb {
   appearance: none;
   width: 16px;
   height: 16px;
-  border-radius: 9999px;
-  background: #0f172a;
-  border: 2px solid #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.3);
-  cursor: pointer;
-  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 4px;
+  background: var(--color-sheet);
+  border: 2px solid var(--color-ink);
+  cursor: grab;
+  transition: transform 0.15s var(--ease-snap);
 }
 
-input[type="range"].studio-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.12);
+input[type="range"].studio-slider:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  transform: scale(1.15);
 }
 
 input[type="range"].studio-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 9999px;
-  background: #0f172a;
-  border: 2px solid #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.3);
-  cursor: pointer;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--color-sheet);
+  border: 2px solid var(--color-ink);
+  cursor: grab;
+}
+
+/* Checkerboard used behind swatches while dragging */
+.bg-checker {
+  background-color: var(--color-panel);
+  background-image:
+    linear-gradient(45deg, var(--color-line-soft) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--color-line-soft) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--color-line-soft) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--color-line-soft) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.22s var(--ease-snap) both;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in 0.18s var(--ease-snap) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
