@@ -107,7 +107,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               style={{ ...monoStyle, color: theme.textMuted }}
               className="text-[11px] font-medium uppercase tracking-wider"
             >
-              {mode === 'light' ? 'Light Mode' : 'Dark Mode'} · {state.brandName || 'Design System'}
+              {mode === 'light' ? 'Modo claro' : 'Modo oscuro'} · {state.brandName || 'Design System'}
             </div>
             <h2
               style={{
@@ -116,7 +116,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               }}
               className="mt-1"
             >
-              Vista Previa de Tokens y Componentes
+              Tokens aplicados a componentes reales
             </h2>
           </div>
 
@@ -141,7 +141,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               style={{ ...monoStyle, color: theme.textMuted }}
               className="text-xs font-medium uppercase tracking-wider"
             >
-              01. Escalas Cromáticas (50–950)
+              Escalas de color, 50 a 950
             </h3>
             {copiedHex && (
               <span
@@ -266,7 +266,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
             style={{ ...monoStyle, color: theme.textMuted }}
             className="mb-4 text-xs font-medium uppercase tracking-wider"
           >
-            02. Jerarquía Tipográfica
+            Jerarquía tipográfica
           </h3>
 
           <div className="space-y-4">
@@ -361,7 +361,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
             style={{ ...monoStyle, color: theme.textMuted }}
             className="mb-4 text-xs font-medium uppercase tracking-wider"
           >
-            03. Botones e Interacción
+            Botones e interacción
           </h3>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -378,7 +378,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               }}
               className="px-4 py-2 transition-opacity hover:opacity-90 cursor-pointer whitespace-nowrap"
             >
-              Botón Primary
+              Primario
             </button>
 
             <button
@@ -393,7 +393,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               }}
               className="px-4 py-2 transition-opacity hover:opacity-90 cursor-pointer whitespace-nowrap"
             >
-              Secondary
+              Secundario
             </button>
 
             <button
@@ -408,7 +408,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               }}
               className="px-4 py-2 transition-opacity hover:opacity-90 cursor-pointer whitespace-nowrap"
             >
-              Accent CTA
+              Acento
             </button>
 
             <button
@@ -468,7 +468,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
             style={{ ...monoStyle, color: theme.textMuted }}
             className="mb-4 text-xs font-medium uppercase tracking-wider"
           >
-            04. Elevaciones, Radio y Espaciado ({state.geometry.cardPadding}px padding ·{' '}
+            Elevación, radio y espaciado ({state.geometry.cardPadding}px padding ·{' '}
             {radii.lg}px radius)
           </h3>
 
@@ -479,21 +479,21 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
             {[
               {
                 tier: 'Elevation 1 · sm',
-                title: 'Superficie Base',
+                title: 'Superficie base',
                 desc: 'Contenedores estándar y paneles de datos.',
                 shadow: shadows.sm,
                 bg: theme.surface,
               },
               {
                 tier: 'Elevation 2 · md',
-                title: 'Tarjeta Elevada',
+                title: 'Tarjeta elevada',
                 desc: 'Elementos interactivos y tarjetas destacadas.',
                 shadow: shadows.md,
                 bg: theme.surface,
               },
               {
                 tier: 'Elevation 3 · lg',
-                title: 'Capa Flotante',
+                title: 'Capa flotante',
                 desc: 'Menús contextuales, popovers y modales.',
                 shadow: shadows.lg,
                 bg: theme.surfaceRaised,
@@ -578,7 +578,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
             style={{ ...monoStyle, color: theme.textMuted }}
             className="mb-4 text-xs font-medium uppercase tracking-wider"
           >
-            05. Formularios, Estados y Composición Real
+            Formularios, estados y una pantalla de ejemplo
           </h3>
 
           <div
@@ -660,7 +660,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   className="flex items-center gap-2 px-3 py-2 text-xs font-medium"
                 >
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span>Confirmado: Escala WCAG AA verificada.</span>
+                  <span>Contraste AA verificado en la escala.</span>
                 </div>
                 <div
                   style={{
