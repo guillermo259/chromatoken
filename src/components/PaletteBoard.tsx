@@ -179,7 +179,7 @@ const SwatchCard: React.FC<SwatchCardProps> = ({
 
   if (isPlaceholder) {
     return (
-      <div className="bg-checker flex h-full min-h-[240px] items-center justify-center rounded-xl border-2 border-dashed border-ink/30 lg:min-h-[440px]">
+      <div className="bg-checker flex h-full min-h-[240px] items-center justify-center rounded-xl border-2 border-dashed border-ink/30 md:min-h-0">
         <span className="rounded-md bg-ground px-2.5 py-1 text-xs font-semibold text-muted">
           {t('Suelta en otro rol')}
         </span>
@@ -199,7 +199,7 @@ const SwatchCard: React.FC<SwatchCardProps> = ({
           '--ctl-hover': controlBgHover,
         } as React.CSSProperties
       }
-      className={`relative flex h-full min-h-[240px] flex-col overflow-hidden rounded-xl transition-[background-color] duration-300 lg:min-h-[440px] ${
+      className={`relative flex h-full min-h-[240px] flex-col overflow-hidden rounded-xl transition-[background-color] duration-300 md:min-h-0 ${
         isOverlay
           ? 'rotate-[1.5deg] scale-[1.02] shadow-[0_30px_60px_-20px_rgba(22,22,20,0.55)] ring-1 ring-black/10'
           : 'ring-1 ring-black/5'
@@ -645,7 +645,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
   };
 
   return (
-    <main className="flex min-h-[calc(100vh-3.5rem)] flex-col">
+    <main className="flex min-h-[calc(100vh-3.5rem)] flex-col md:h-[calc(100dvh-3.5rem)] md:min-h-[640px]">
       {/* Toolbar */}
       <div className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:px-6 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -761,9 +761,9 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
         }}
       >
         <SortableContext items={order} strategy={rectSortingStrategy}>
-          <div className="grid flex-1 grid-cols-1 gap-3 p-3 sm:p-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid flex-1 grid-cols-1 gap-3 p-3 sm:p-4 md:grid-cols-2 md:min-h-0 md:grid-rows-2 lg:grid-cols-4 lg:grid-rows-1">
             {colors.map((item, i) => (
-              <section key={item.role} aria-label={t(roleNames[item.role])} className="flex flex-col">
+              <section key={item.role} aria-label={t(roleNames[item.role])} className="flex flex-col md:min-h-0">
                 <header className="mb-2.5 px-1">
                   <div className="flex items-center justify-between gap-2">
                     <h2 className="font-ui-display text-base font-extrabold leading-tight tracking-[-0.02em]">
@@ -780,7 +780,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
                   </div>
                   <p className="mt-0.5 text-xs leading-snug text-muted">{t(ROLE_DESCRIPTIONS[item.role])}</p>
                 </header>
-                <div className="flex-1">
+                <div className="flex-1 md:min-h-0">
                   <SortableSwatch
                     id={order[i]}
                     item={item}
@@ -812,7 +812,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
         </DragOverlay>
       </DndContext>
 
-      <p className="hidden px-6 pb-4 text-xs text-muted lg:block">
+      <p className="hidden shrink-0 px-6 pb-4 text-xs text-muted lg:block">
         <kbd className="rounded border border-line bg-sheet px-1.5 py-0.5 text-[11px] text-ink">{t('Espacio')}</kbd>{' '}
         {t('genera colores nuevos para los roles sin bloquear. Arrastra el asa')}{' '}
         <GripVertical className="inline h-3.5 w-3.5 align-[-2px]" />{' '}{t('para cambiar un color de rol. Clic en un tono de la escala para usarlo.')}
