@@ -22,6 +22,7 @@ import { TopBar } from './components/TopBar';
 import { PaletteBoard } from './components/PaletteBoard';
 import { StudioSidebar } from './components/StudioSidebar';
 import { PreviewCanvas } from './components/PreviewCanvas';
+import type { PreviewPlatform, PreviewTemplate } from './components/InterfacePreview';
 import { ExportPanel } from './components/ExportPanel';
 import { Toast } from './components/Toast';
 import { Footer } from './components/Footer';
@@ -139,6 +140,8 @@ export default function App() {
   const [activeSection, setActiveSection] = useState<WorkspaceSection>('palette');
   const [activeExportTab, setActiveExportTab] = useState<ExportTab>('css');
   const [themeMode, setThemeMode] = useState<PreviewThemeMode>('light');
+  const [previewTemplate, setPreviewTemplate] = useState<PreviewTemplate>('components');
+  const [previewPlatform, setPreviewPlatform] = useState<PreviewPlatform>('web');
   const [toast, setToast] = useState<{ id: number; message: string } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
 
@@ -552,6 +555,10 @@ export default function App() {
               state={state}
               themeMode={themeMode}
               onThemeModeChange={setThemeMode}
+              template={previewTemplate}
+              onTemplateChange={setPreviewTemplate}
+              platform={previewPlatform}
+              onPlatformChange={setPreviewPlatform}
               onContinue={() => navigate('export')}
               contrast={contrastProps}
             />

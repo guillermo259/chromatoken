@@ -160,7 +160,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
   };
 
   return (
-    <aside className="w-full shrink-0 border-b border-line bg-panel lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:w-[360px] lg:border-b-0 lg:border-r">
+    <aside className="w-full shrink-0 border-b border-line bg-panel lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:w-[min(360px,calc(100%_-_75vw))] lg:border-b-0 lg:border-r">
       <div className="flex h-full flex-col">
         {/* System name */}
         <div className="border-b border-line px-5 pb-4 pt-5">
