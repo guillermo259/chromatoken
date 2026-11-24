@@ -36,11 +36,13 @@ export const TopBar: React.FC<TopBarProps> = ({ colors, activeSection, onNavigat
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-ground/92 backdrop-blur-md">
-      <div className="flex h-14 items-center justify-between gap-4 px-4 sm:px-6">
+      {/* Three-column grid: the steps sit in the middle track, so they never shift
+          when the actions on the right change (Export hides its own button). */}
+      <div className="grid h-14 grid-cols-[1fr_auto] items-center gap-4 px-4 sm:px-6 md:grid-cols-[1fr_auto_1fr]">
         <button
           type="button"
           onClick={() => onNavigate('palette')}
-          className="group flex shrink-0 items-center gap-2.5 rounded-md"
+          className="group flex shrink-0 items-center gap-2.5 justify-self-start rounded-md"
           aria-label="ChromaToken, volver al inicio"
         >
           <LiveMark colors={colors} />
@@ -81,7 +83,7 @@ export const TopBar: React.FC<TopBarProps> = ({ colors, activeSection, onNavigat
           </ol>
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 justify-self-end">
           <button
             type="button"
             onClick={onShare}
@@ -89,7 +91,7 @@ export const TopBar: React.FC<TopBarProps> = ({ colors, activeSection, onNavigat
             title="Copiar un enlace con toda la configuración"
           >
             <Link2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Compartir</span>
+            <span className="hidden sm:inline md:hidden lg:inline">Compartir</span>
           </button>
           {activeSection !== 'export' && (
             <button

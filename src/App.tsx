@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ColorRole,
+  ContrastLevel,
   DesignTokenState,
   ExportTab,
   GeometryConfig,
@@ -13,14 +14,17 @@ import {
 import { CURATED_PAIRINGS, injectGoogleFontsLink } from './data/googleFonts';
 import { CURATED_PRESETS, generateHarmoniousPalette } from './utils/colorEngine';
 import { decodeStateFromHash, encodeStateToHash } from './utils/tokenExporters';
+import { auditContrast, enforceContrast } from './utils/contrastAudit';
 import { TopBar } from './components/TopBar';
 import { PaletteBoard } from './components/PaletteBoard';
 import { StudioSidebar } from './components/StudioSidebar';
 import { PreviewCanvas } from './components/PreviewCanvas';
 import { ExportPanel } from './components/ExportPanel';
 import { Toast } from './components/Toast';
+import { Footer } from './components/Footer';
 
 const STORAGE_KEY = 'chromatoken_workspace_v1';
+const LEVEL_KEY = 'chromatoken_contrast_level';
 const HISTORY_LIMIT = 30;
 
 const DEFAULT_STATE: DesignTokenState = {
@@ -79,6 +83,17 @@ export default function App() {
   const [themeMode, setThemeMode] = useState<PreviewThemeMode>('light');
   const [toast, setToast] = useState<{ id: number; message: string } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
+  const [contrastLevel, setContrastLevel] = useState<ContrastLevel>(() => {
+    try {
+      return localStorage.getItem(LEVEL_KEY) === 'AAA' ? 'AAA' : 'AA';
+    } catch {
+      return 'AA';
+    }
+  });
+  const contrastReport = useMemo(
+    () => auditContrast(state.colors, contrastLevel),
+    [state.colors, contrastLevel]
+  );
 
   // Undo/redo history for palette-level changes (generate, presets, reorder)
   const [history, setHistory] = useState<PaletteColor[][]>(() => [state.colors]);
@@ -97,6 +112,14 @@ export default function App() {
       state.typography.monoFont
     );
   }, [state.typography.headingFont, state.typography.bodyFont, state.typography.monoFont]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LEVEL_KEY, contrastLevel);
+    } catch {
+      // Preference only; ignore storage errors
+    }
+  }, [contrastLevel]);
 
   useEffect(() => {
     try {
@@ -120,8 +143,34 @@ export default function App() {
       notify('Todos los colores están bloqueados');
       return;
     }
-    commitPalette(generateHarmoniousPalette(state.colors, state.harmonyMode));
-  }, [state.colors, state.harmonyMode, commitPalette, notify]);
+    // New colors are nudged (lightness only) until their real pairs meet the chosen WCAG level
+    commitPalette(
+      enforceContrast(generateHarmoniousPalette(state.colors, state.harmonyMode), contrastLevel)
+    );
+  }, [state.colors, state.harmonyMode, contrastLevel, commitPalette, notify]);
+
+  const handleApplyContrastFix = useCallback(
+    (role: ColorRole, hex: string) => {
+      commitPalette(state.colors.map((c) => (c.role === role ? { ...c, hex } : c)));
+      notify(`${role.charAt(0).toUpperCase()}${role.slice(1)} ajustado a ${hex}`);
+    },
+    [state.colors, commitPalette, notify]
+  );
+
+  const handleFixAllContrast = useCallback(() => {
+    const next = enforceContrast(state.colors, contrastLevel);
+    const changed = next.filter((c, i) => c.hex !== state.colors[i].hex).length;
+    if (changed === 0) return;
+    commitPalette(next);
+    notify(changed === 1 ? '1 color ajustado' : `${changed} colores ajustados`);
+  }, [state.colors, contrastLevel, commitPalette, notify]);
+
+  const contrastProps = {
+    report: contrastReport,
+    onLevelChange: setContrastLevel,
+    onApplyFix: handleApplyContrastFix,
+    onFixAll: handleFixAllContrast,
+  };
 
   const handleUndo = useCallback(() => {
     if (historyIndex <= 0) return;
@@ -270,6 +319,7 @@ export default function App() {
             onApplyPreset={handleApplyPreset}
             onCopy={handleCopy}
             onContinue={() => navigate('studio')}
+            contrast={contrastProps}
           />
         )}
 
@@ -290,6 +340,7 @@ export default function App() {
               themeMode={themeMode}
               onThemeModeChange={setThemeMode}
               onContinue={() => navigate('export')}
+              contrast={contrastProps}
             />
           </main>
         )}
@@ -305,6 +356,8 @@ export default function App() {
           />
         )}
       </div>
+
+      <Footer />
 
       <Toast toast={toast} />
     </div>

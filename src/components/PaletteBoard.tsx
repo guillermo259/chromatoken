@@ -47,6 +47,7 @@ import {
   ROLE_LABELS,
   SHADE_STEPS,
 } from '../utils/colorEngine';
+import { ContrastControls, ContrastMenu, RoleContrastBadge } from './ContrastPanel';
 
 interface PaletteBoardProps {
   colors: PaletteColor[];
@@ -63,6 +64,7 @@ interface PaletteBoardProps {
   onApplyPreset: (presetId: string) => void;
   onCopy: (text: string, label?: string) => void;
   onContinue: () => void;
+  contrast: ContrastControls;
 }
 
 const HARMONY_OPTIONS: Array<{ value: HarmonyMode; label: string; hint: string }> = [
@@ -560,8 +562,11 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
   onApplyPreset,
   onCopy,
   onContinue,
+  contrast,
 }) => {
   const [openTuner, setOpenTuner] = useState<ColorRole | null>(null);
+  const [contrastOpen, setContrastOpen] = useState(false);
+  const [contrastFocus, setContrastFocus] = useState<ColorRole | null>(null);
   // Stable sortable ids that travel with each color value while role slots stay fixed
   const [order, setOrder] = useState<string[]>(() => colors.map((_, i) => `swatch-${i}`));
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -591,7 +596,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
   // Space generates, Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z or Ctrl+Y redoes
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (activeId || openTuner || e.defaultPrevented) return;
+      if (activeId || openTuner || contrastOpen || e.defaultPrevented) return;
       if (shouldIgnoreShortcut(e.target, keyboardNav.current)) return;
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
@@ -608,7 +613,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onGenerate, onUndo, onRedo, activeId, openTuner]);
+  }, [onGenerate, onUndo, onRedo, activeId, openTuner, contrastOpen]);
 
   const indexOfId = (id: string) => order.indexOf(id);
 
@@ -690,10 +695,21 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <ContrastMenu
+            contrast={contrast}
+            colors={colors}
+            open={contrastOpen}
+            focusRole={contrastFocus}
+            onOpenChange={(v) => {
+              setContrastOpen(v);
+              if (!v) setContrastFocus(null);
+            }}
+            placement="sm:left-0 xl:left-auto xl:right-0"
+          />
           <button
             type="button"
             onClick={onGenerate}
-            className="group inline-flex h-10 flex-1 items-center justify-center gap-2.5 rounded-lg bg-signal pl-3.5 pr-2 text-sm font-bold text-ink transition-transform active:scale-[0.97] xl:flex-none"
+            className="group inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-2.5 rounded-lg bg-signal pl-3.5 pr-2 text-sm font-bold text-ink transition-transform active:scale-[0.97] sm:flex-none"
           >
             <Shuffle className="h-4 w-4 transition-transform duration-300 group-hover:rotate-180" />
             Generar
@@ -704,9 +720,11 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
           <button
             type="button"
             onClick={onContinue}
-            className="group inline-flex h-10 items-center gap-2 rounded-lg border border-ink px-3.5 text-sm font-semibold transition-colors hover:bg-ink hover:text-ground"
+            aria-label="Siguiente: sistema"
+            className="group inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-ink px-3 text-sm font-semibold whitespace-nowrap transition-colors hover:bg-ink hover:text-ground sm:px-3.5"
           >
-            Siguiente: sistema
+            <span className="sm:hidden">Siguiente</span>
+            <span className="hidden sm:inline">Siguiente: sistema</span>
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
@@ -738,9 +756,19 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
             {colors.map((item, i) => (
               <section key={item.role} aria-label={ROLE_LABELS[item.role]} className="flex flex-col">
                 <header className="mb-2.5 px-1">
-                  <h2 className="font-ui-display text-base font-extrabold leading-tight tracking-[-0.02em]">
-                    {ROLE_LABELS[item.role]}
-                  </h2>
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="font-ui-display text-base font-extrabold leading-tight tracking-[-0.02em]">
+                      {ROLE_LABELS[item.role]}
+                    </h2>
+                    <RoleContrastBadge
+                      report={contrast.report}
+                      role={item.role}
+                      onClick={() => {
+                        setContrastFocus(item.role);
+                        setContrastOpen(true);
+                      }}
+                    />
+                  </div>
                   <p className="mt-0.5 text-xs leading-snug text-muted">{ROLE_DESCRIPTIONS[item.role]}</p>
                 </header>
                 <div className="flex-1">
