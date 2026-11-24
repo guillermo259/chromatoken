@@ -7,7 +7,7 @@
 
 <p align="center">
   <strong>De una paleta de color a un sistema de diseño listo para producción.</strong><br>
-  Genera colores con roles, valida su contraste, define tipografía y forma, y exporta tus design tokens.
+  Genera colores con roles, valida su contraste, define tipografía y forma, y exporta tus design tokens a código y a Figma.
 </p>
 
 <p align="center">
@@ -20,6 +20,7 @@
 
 <p align="center">
   <a href="#qué-puedes-hacer">Qué puedes hacer</a> ·
+  <a href="#llevar-los-tokens-a-figma">Figma</a> ·
   <a href="#puesta-en-marcha">Puesta en marcha</a> ·
   <a href="#estructura">Estructura</a> ·
   <a href="#créditos">Créditos</a>
@@ -107,6 +108,35 @@ El texto necesita **4.5:1** en nivel AA y **7:1** en nivel AAA. Los elementos de
 
 **Compartir** copia un enlace que reabre exactamente la misma configuración.
 
+### Llevar los tokens a Figma
+
+Hay dos formas, y el panel de exportación muestra la guía de importación de cada una:
+
+| | Variables de Figma | Tokens Studio |
+| --- | --- | --- |
+| Archivos | `Light.json` + `Dark.json` | `tokens-studio.json` |
+| Necesita | Plan Professional o superior de Figma | El plugin [Tokens Studio for Figma](https://www.figma.com/community/plugin/843461159747178978) |
+| Colores con modos claro y oscuro | Sí | Sí. Juntos en una colección con el plan de pago del plugin; con el gratuito, en dos colecciones |
+| Tamaños, radios y espaciado | Sí | Sí |
+| Estilos de texto (Display, H1–H3, Body, Small, Code) | No | Sí |
+| Sombras sm, md y lg | No | Sí |
+
+Los colores semánticos (`text`, `surface`, `primary`…) quedan como **alias de la paleta** cuando coinciden con un tono de la escala, así que al cambiar la paleta en Figma se actualizan solos. Los que el motor ajustó por contraste se exportan con su valor directo.
+
+**Variables de Figma (sin plugins)**
+
+1. Descarga los dos archivos con **Descargar todos**.
+2. En Figma, sin nada seleccionado, abre **Local variables** y crea una colección nueva.
+3. Arrastra `Light.json` y `Dark.json` juntos a la ventana de variables. Cada archivo crea un modo.
+4. Para actualizar, haz clic derecho sobre un modo y elige **Import mode**.
+
+**Tokens Studio**
+
+1. Abre el plugin y pulsa **Load and export** → **Load from file/folder** → **Choose file**, y elige `tokens-studio.json`.
+2. Pulsa **Styles & Variables** → **Export styles & variables** y marca variables y estilos.
+
+El plugin viene configurado con el formato W3C DTCG, que es el que usa el archivo.
+
 ### Atajos de teclado
 
 | Atajo | Acción |
@@ -161,7 +191,7 @@ src/
 │   ├── StudioSidebar.tsx          Paso 2: pestañas Color, Tipografía y Forma
 │   ├── PreviewCanvas.tsx          Paso 2: vista previa en claro, oscuro y ambos
 │   ├── VisualShowcaseSurface.tsx  Componentes de muestra pintados con tus tokens
-│   ├── ExportPanel.tsx            Paso 3: formatos y visor de código
+│   ├── ExportPanel.tsx            Paso 3: formatos, visor de código y guías para Figma
 │   ├── ContrastPanel.tsx          Indicador y panel de contraste
 │   ├── Toast.tsx                  Avisos breves
 │   └── Footer.tsx                 Créditos y enlace al repositorio
