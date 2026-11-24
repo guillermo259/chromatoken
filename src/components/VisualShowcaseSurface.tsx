@@ -7,7 +7,6 @@ import {
   deriveSemanticTheme,
   getAccessibleTextColor,
   getWcagLabel,
-  ROLE_LABELS,
   SHADE_STEPS,
 } from '../utils/colorEngine';
 import {
@@ -16,7 +15,9 @@ import {
   getSpacingScale,
   getTypeScale,
 } from '../utils/tokenExporters';
+import { roleNames } from '../i18n/messages';
 import { auditContrast, ContrastReport, formatRatio } from '../utils/contrastAudit';
+import { useTranslation } from '../i18n/LocaleProvider';
 
 interface VisualShowcaseSurfaceProps {
   state: DesignTokenState;
@@ -31,6 +32,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
   compact = false,
   contrastReport: providedContrastReport,
 }) => {
+  const t = useTranslation();
   const [copiedHex, setCopiedHex] = useState<string | null>(null);
   const [switchActive, setSwitchActive] = useState(true);
   const [inputValue, setInputValue] = useState('design-system@acme.studio');
@@ -117,7 +119,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               style={{ ...monoStyle, color: theme.textMuted }}
               className="text-[11px] font-medium uppercase tracking-wider"
             >
-              {mode === 'light' ? 'Modo claro' : 'Modo oscuro'} · {state.brandName || 'Design System'}
+              {mode === 'light' ? t('Modo claro') : t('Modo oscuro')} · {state.brandName || t('Sistema de diseño')}
             </div>
             <h2
               style={{
@@ -126,7 +128,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               }}
               className="mt-1"
             >
-              Tokens aplicados a componentes reales
+              {t('Tokens aplicados a componentes reales')}
             </h2>
           </div>
 
@@ -135,11 +137,11 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
             className="flex items-center gap-3 text-xs"
           >
             <span>
-              Texto {formatRatio(textContrastOnSurface)}:1 ({getWcagLabel(textContrastOnSurface)})
+              {t('Texto')}{' '}{formatRatio(textContrastOnSurface)}:1 ({t(getWcagLabel(textContrastOnSurface))})
             </span>
             <span aria-hidden="true">·</span>
             <span>
-              Primary {formatRatio(primaryContrastOnSurface)}:1 ({getWcagLabel(primaryContrastOnSurface)})
+              {t('Primario')} {formatRatio(primaryContrastOnSurface)}:1 ({t(getWcagLabel(primaryContrastOnSurface))})
             </span>
           </div>
         </div>
@@ -151,7 +153,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               style={{ ...monoStyle, color: theme.textMuted }}
               className="text-xs font-medium uppercase tracking-wider"
             >
-              Escalas de color, 50 a 950
+              {t('Escalas de color, 50 a 950')}
             </h3>
             {copiedHex && (
               <span
@@ -159,7 +161,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                 className="inline-flex items-center gap-1 text-xs font-medium"
               >
                 <Check className="h-3 w-3" />
-                Copiado {copiedHex}
+                {t('Copiado {0}', copiedHex)}
               </span>
             )}
           </div>
@@ -174,7 +176,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                 >
                   <div className="flex items-baseline justify-between sm:block">
                     <span style={bodyStyle} className="text-xs font-semibold">
-                      {ROLE_LABELS[item.role]}
+                      {t(roleNames[item.role])}
                     </span>
                     <div
                       style={{ ...monoStyle, color: theme.textMuted }}
@@ -192,7 +194,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                           key={step}
                           type="button"
                           onClick={() => handleCopy(hex)}
-                          title={`${ROLE_LABELS[item.role]} ${step}: ${hex} (clic para copiar)`}
+                          title={t('{0} {1}: {2} (clic para copiar)', t(roleNames[item.role]), step, hex)}
                           style={{
                             backgroundColor: hex,
                             borderRadius: `${radii.sm}px`,
@@ -224,13 +226,13 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
           {/* Semantic Surfaces Strip */}
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
-              { name: 'Canvas', hex: theme.canvas },
-              { name: 'Surface', hex: theme.surface },
-              { name: 'Border', hex: theme.border },
-              { name: 'Primary', hex: theme.primary },
+              { name: 'Lienzo', hex: theme.canvas },
+              { name: 'Superficie', hex: theme.surface },
+              { name: 'Borde', hex: theme.border },
+              { name: 'Primario', hex: theme.primary },
             ].map((token) => (
               <button
-                key={token.name}
+                key={t(token.name)}
                 type="button"
                 onClick={() => handleCopy(token.hex)}
                 style={{
@@ -253,7 +255,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                     style={{ color: theme.text }}
                     className="block truncate text-xs font-medium"
                   >
-                    {token.name}
+                    {t(token.name)}
                   </span>
                   <span
                     style={{ ...monoStyle, color: theme.textMuted }}
@@ -276,7 +278,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
             style={{ ...monoStyle, color: theme.textMuted }}
             className="mb-4 text-xs font-medium uppercase tracking-wider"
           >
-            Jerarquía tipográfica
+            {t('Jerarquía tipográfica')}
           </h3>
 
           <div className="space-y-4">
@@ -295,7 +297,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   lineHeight: 1.12,
                 }}
               >
-                Sistemas visuales consistentes
+                {t('Sistemas visuales consistentes')}
               </div>
             </div>
 
@@ -314,7 +316,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   lineHeight: 1.22,
                 }}
               >
-                Escala proporcional de títulos y bloques
+                {t('Escala proporcional de títulos y bloques')}
               </div>
             </div>
 
@@ -333,9 +335,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                 }}
                 className="max-w-[65ch]"
               >
-                Los tokens de diseño conectan la intención visual con el código en producción.
-                Esta tipografía equilibra legibilidad sostenida en párrafos largos con una
-                jerarquía clara en interfaces complejas.
+                {t('Los tokens de diseño conectan la intención visual con el código en producción. Esta tipografía equilibra legibilidad sostenida en párrafos largos con una jerarquía clara en interfaces complejas.')}
               </p>
             </div>
 
@@ -347,7 +347,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   color: theme.textMuted,
                 }}
               >
-                Caption ({typeScale.sm}px): Etiquetas secundarias, fechas y anotaciones de interfaz.
+                {t('Caption ({0}px): Etiquetas secundarias, fechas y anotaciones de interfaz.', typeScale.sm)}
               </span>
               <span
                 style={{
@@ -371,7 +371,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
             style={{ ...monoStyle, color: theme.textMuted }}
             className="mb-4 text-xs font-medium uppercase tracking-wider"
           >
-            Botones e interacción
+            {t('Botones e interacción')}
           </h3>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -408,7 +408,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                 border: false,
               },
               {
-                label: 'Outline',
+                label: 'Contorno',
                 token: '--color-border-strong',
                 hex: theme.borderStrong,
                 style: {
@@ -419,7 +419,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                 border: true,
               },
               {
-                label: 'Ghost',
+                label: 'Fantasma',
                 token: '--color-text-secondary',
                 hex: theme.textSecondary,
                 style: {
@@ -429,7 +429,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                 border: false,
               },
               {
-                label: 'Destructive',
+                label: 'Destructivo',
                 token: '--color-destructive',
                 hex: theme.destructive,
                 style: {
@@ -442,7 +442,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               const isSelected = selectedBtn?.label === btn.label;
               return (
                 <button
-                  key={btn.label}
+                  key={t(btn.label)}
                   type="button"
                   aria-pressed={isSelected}
                   onClick={() =>
@@ -461,7 +461,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   }}
                   className={`${btn.border ? 'border ' : ''}px-4 py-2 transition-opacity hover:opacity-90 cursor-pointer whitespace-nowrap`}
                 >
-                  {btn.label}
+                  {t(btn.label)}
                 </button>
               );
             })}
@@ -471,7 +471,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               style={{ ...monoStyle, color: theme.textMuted }}
               className="mt-3 text-xs"
             >
-              Botón «{selectedBtn.label}» · {selectedBtn.token} ({selectedBtn.hex})
+              {t('Botón «{0}» · {1} ({2})', t(selectedBtn.label), selectedBtn.token, selectedBtn.hex)}
             </p>
           )}
         </section>
@@ -485,8 +485,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
             style={{ ...monoStyle, color: theme.textMuted }}
             className="mb-4 text-xs font-medium uppercase tracking-wider"
           >
-            Elevación, radio y espaciado ({state.geometry.cardPadding}px padding ·{' '}
-            {radii.lg}px radius)
+            {t('Elevación, radio y espaciado ({0}px de relleno · {1}px de radio)', state.geometry.cardPadding, radii.lg)}
           </h3>
 
           <div
@@ -495,21 +494,21 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
           >
             {[
               {
-                tier: 'Elevation 1 · sm',
+                tier: 'Elevación 1 · sm',
                 title: 'Superficie base',
                 desc: 'Contenedores estándar y paneles de datos.',
                 shadow: shadows.sm,
                 bg: theme.surface,
               },
               {
-                tier: 'Elevation 2 · md',
+                tier: 'Elevación 2 · md',
                 title: 'Tarjeta elevada',
                 desc: 'Elementos interactivos y tarjetas destacadas.',
                 shadow: shadows.md,
                 bg: theme.surface,
               },
               {
-                tier: 'Elevation 3 · lg',
+                tier: 'Elevación 3 · lg',
                 title: 'Capa flotante',
                 desc: 'Menús contextuales, popovers y modales.',
                 shadow: shadows.lg,
@@ -531,7 +530,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   style={{ ...monoStyle, color: theme.primary }}
                   className="text-[11px] font-semibold"
                 >
-                  {card.tier}
+                  {t(card.tier)}
                 </div>
                 <h4
                   style={{
@@ -540,7 +539,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   }}
                   className="mt-1.5"
                 >
-                  {card.title}
+                  {t(card.title)}
                 </h4>
                 <p
                   style={{
@@ -549,7 +548,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   }}
                   className="mt-1.5"
                 >
-                  {card.desc}
+                  {t(card.desc)}
                 </p>
               </div>
             ))}
@@ -561,7 +560,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
               style={{ ...monoStyle, color: theme.textMuted }}
               className="mb-2 text-[11px]"
             >
-              Escala de espaciado (unidad {state.geometry.spacingUnit}px)
+              {t('Escala de espaciado (unidad {0}px)', state.geometry.spacingUnit)}
             </div>
             <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
               {Object.entries(spacing).map(([key, px]) => (
@@ -595,7 +594,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
             style={{ ...monoStyle, color: theme.textMuted }}
             className="mb-4 text-xs font-medium uppercase tracking-wider"
           >
-            Formularios, estados y una pantalla de ejemplo
+            {t('Formularios, estados y una pantalla de ejemplo')}
           </h3>
 
           <div
@@ -619,7 +618,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   style={{ ...bodyStyle, color: theme.text }}
                   className="block text-xs font-semibold"
                 >
-                  Correo de notificación
+                  {t('Correo de notificación')}
                 </label>
                 <input
                   type="email"
@@ -645,7 +644,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   style={{ ...bodyStyle, color: theme.text }}
                   className="text-xs font-medium"
                 >
-                  Sincronizar variables automáticas
+                  {t('Sincronizar variables automáticas')}
                 </span>
                 <button
                   type="button"
@@ -679,8 +678,8 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
                   <span>
                     {contrastReport.failures.length === 0
-                      ? `Contraste ${state.contrastLevel} verificado (${contrastReport.passed}/${contrastReport.total}).`
-                      : `Sistema sincronizado (${contrastReport.passed}/${contrastReport.total} pares ${state.contrastLevel}).`}
+                      ? t('Contraste {0} verificado ({1}/{2}).', state.contrastLevel, contrastReport.passed, contrastReport.total)
+                      : t('Sistema sincronizado ({0}/{1} pares {2}).', contrastReport.passed, contrastReport.total, state.contrastLevel)}
                   </span>
                 </div>
                 <div
@@ -694,8 +693,14 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   <span>
                     {contrastReport.failures.length > 0
-                      ? `Atención: ${contrastReport.failures.length} ${contrastReport.failures.length === 1 ? 'combinación requiere' : 'combinaciones requieren'} ajuste para ${state.contrastLevel}.`
-                      : 'Atención: Revisa el peso en cuerpos menores a 13px.'}
+                      ? t(
+                          contrastReport.failures.length === 1
+                            ? 'Atención: {0} combinación requiere ajuste para {1}.'
+                            : 'Atención: {0} combinaciones requieren ajuste para {1}.',
+                          contrastReport.failures.length,
+                          state.contrastLevel
+                        )
+                      : t('Atención: Revisa el peso en cuerpos menores a 13px.')}
                   </span>
                 </div>
                 <div
@@ -707,7 +712,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   className="flex items-center gap-2 px-3 py-2 text-xs font-medium"
                 >
                   <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>Error: Token obsoleto detectado en el paquete.</span>
+                  <span>{t('Error: Token obsoleto detectado en el paquete.')}</span>
                 </div>
               </div>
             </div>
@@ -729,7 +734,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                     style={{ ...monoStyle, color: theme.accent }}
                     className="text-[11px] font-semibold uppercase tracking-wider"
                   >
-                    Resumen Mensual
+                    {t('Resumen Mensual')}
                   </span>
                   <span
                     style={{ ...monoStyle, color: theme.textMuted }}
@@ -746,7 +751,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   }}
                   className="mt-2"
                 >
-                  {state.brandName || 'Producto Digital'} Analytics
+                  {t('{0} Analytics', state.brandName || t('Producto Digital'))}
                 </h4>
                 <p
                   style={{
@@ -755,8 +760,10 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   }}
                   className="mt-1.5"
                 >
-                  Vista combinada con tu tipografía, espaciado de tarjeta, bordes y jerarquía
-                  de color sobre {mode === 'light' ? 'fondo claro' : 'fondo oscuro'}.
+                  {t(mode === 'light'
+                    ? 'Vista combinada con tu tipografía, espaciado de tarjeta, bordes y jerarquía de color sobre fondo claro.'
+                    : 'Vista combinada con tu tipografía, espaciado de tarjeta, bordes y jerarquía de color sobre fondo oscuro.'
+                  )}
                 </p>
 
                 <div
@@ -771,7 +778,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                       style={{ color: theme.textMuted }}
                       className="text-[11px] font-medium"
                     >
-                      Conversión neta
+                      {t('Conversión neta')}
                     </div>
                     <div
                       style={{
@@ -787,7 +794,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                     style={{ ...monoStyle, color: theme.primary }}
                     className="text-xs font-semibold"
                   >
-                    +0.64% vs oct
+                    {t('+0.64% vs oct')}
                   </div>
                 </div>
                 {reportExpanded && (
@@ -799,15 +806,15 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                     className="mt-3 space-y-1.5 border-t pt-3 text-xs"
                   >
                     <div className="flex justify-between">
-                      <span>Tráfico orgánico</span>
+                      <span>{t('Tráfico orgánico')}</span>
                       <span style={monoStyle}>2.91%</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Acceso directo</span>
+                      <span>{t('Acceso directo')}</span>
                       <span style={monoStyle}>1.18%</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Campañas</span>
+                      <span>{t('Campañas')}</span>
                       <span style={monoStyle}>0.73%</span>
                     </div>
                   </div>
@@ -819,7 +826,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   style={{ ...bodyStyle, color: theme.textMuted }}
                   className="text-xs"
                 >
-                  Actualizado hoy
+                  {t('Actualizado hoy')}
                 </span>
                 <button
                   type="button"
@@ -835,7 +842,7 @@ export const VisualShowcaseSurface: React.FC<VisualShowcaseSurfaceProps> = ({
                   }}
                   className="inline-flex items-center gap-1.5 px-4 py-2 transition-opacity hover:opacity-90 cursor-pointer whitespace-nowrap"
                 >
-                  {reportExpanded ? 'Ocultar detalle' : 'Explorar reporte'}
+                  {reportExpanded ? t('Ocultar detalle') : t('Explorar reporte')}
                   <ArrowUpRight className="h-3.5 w-3.5" />
                 </button>
               </div>
