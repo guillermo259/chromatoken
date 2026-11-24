@@ -75,6 +75,6 @@ export interface DesignTokenState {
 
 export type WorkspaceSection = 'palette' | 'studio' | 'export';
 export type PreviewThemeMode = 'light' | 'dark' | 'split';
-export type ExportTab = 'markdown' | 'json' | 'css' | 'tailwind';
+export type ExportTab = 'markdown' | 'json' | 'css' | 'tailwind' | 'figma' | 'tokens-studio';
 
 export type ContrastLevel = 'AA' | 'AAA';

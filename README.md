@@ -100,8 +100,10 @@ El texto necesita **4.5:1** en nivel AA y **7:1** en nivel AAA. Los elementos de
 | --- | --- |
 | `tokens.css` | Variables CSS con `:root`, `.dark` y la importación de Google Fonts |
 | `tailwind-theme.css` | Bloque `@theme` para Tailwind CSS v4 |
-| `tokens.json` | Formato W3C Design Tokens (Tokens Studio, Style Dictionary) |
+| `tokens.json` | Formato W3C Design Tokens (Style Dictionary) |
 | `designtoken.md` | Especificación legible para el equipo o para agentes de código, con la tabla de contraste |
+| `Light.json` + `Dark.json` | Variables nativas de Figma con modos claro/oscuro y alias a la paleta |
+| `tokens-studio.json` | Paquete completo para Tokens Studio (variables, tipografías compuestas y sombras) |
 
 **Compartir** copia un enlace que reabre exactamente la misma configuración.
 
@@ -166,6 +168,7 @@ src/
 ├── utils/
 │   ├── colorEngine.ts             Conversión de color, escalas 50–950, armonías, tema semántico
 │   ├── contrastAudit.ts           Auditoría WCAG y corrección por luminosidad
+│   ├── figmaExporters.ts          Variables nativas de Figma y formato Tokens Studio
 │   └── tokenExporters.ts          Generadores de CSS, Tailwind, JSON y Markdown; enlace compartido
 ├── data/googleFonts.ts            Catálogo de fuentes y combinaciones curadas
 └── types/tokens.ts                Tipos compartidos
