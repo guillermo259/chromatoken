@@ -1,0 +1,8 @@
+{
+  "name": "ChromaToken — Generador de Paletas y Design Tokens",
+  "description": "Genera paletas cromáticas al estilo Coolors, configura tipografías de Google Fonts, radios, espaciados y elevaciones, y exporta tus Design Tokens a JSON, CSS, Tailwind y designtoken.md.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
