@@ -68,17 +68,17 @@ export const ContrastIndicator: React.FC<{
       aria-expanded={open}
       aria-haspopup="dialog"
       title={`${report.passed} de ${report.total} combinaciones cumplen WCAG ${report.level}`}
-      className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[13px] font-semibold transition-colors ${
+      className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border px-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors sm:px-3 ${
         ok ? 'border-line bg-sheet hover:border-ink' : 'border-signal/60 bg-signal/10 hover:border-signal'
       }`}
     >
       {ok ? (
-        <ShieldCheck className="h-4 w-4 text-ink" />
+        <ShieldCheck className="h-4 w-4 shrink-0 text-ink" />
       ) : (
-        <ShieldAlert className="h-4 w-4 text-signal-ink" />
+        <ShieldAlert className="h-4 w-4 shrink-0 text-signal-ink" />
       )}
-      Contraste
-      <span className={`font-ui-mono text-xs ${ok ? 'text-muted' : 'text-signal-ink'}`}>
+      <span className="hidden min-[380px]:inline">Contraste</span>
+      <span className={`font-ui-mono text-xs tabular-nums ${ok ? 'text-muted' : 'text-signal-ink'}`}>
         {report.passed}/{report.total}
       </span>
     </button>

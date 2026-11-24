@@ -648,7 +648,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
           <div
             role="group"
             aria-label="Regla de armonía"
-            className="-mx-1 flex max-w-full items-center gap-1 overflow-x-auto px-1"
+            className="-mx-1 flex max-w-full items-center gap-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {HARMONY_OPTIONS.map((opt) => {
               const active = harmonyMode === opt.value;
@@ -696,7 +696,7 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
           <ContrastMenu
             contrast={contrast}
             colors={colors}
@@ -708,27 +708,31 @@ export const PaletteBoard: React.FC<PaletteBoardProps> = ({
             }}
             placement="sm:left-0 xl:left-auto xl:right-0"
           />
-          <button
-            type="button"
-            onClick={onGenerate}
-            className="group inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-2.5 rounded-lg bg-signal pl-3.5 pr-2 text-sm font-bold text-ink transition-transform active:scale-[0.97] sm:flex-none"
-          >
-            <Shuffle className="h-4 w-4 transition-transform duration-300 group-hover:rotate-180" />
-            Generar
-            <kbd className="hidden rounded-md bg-ink/12 px-1.5 py-0.5 text-[11px] font-medium sm:inline">
-              Espacio
-            </kbd>
-          </button>
-          <button
-            type="button"
-            onClick={onContinue}
-            aria-label="Siguiente: sistema"
-            className="group inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-ink px-3 text-sm font-semibold whitespace-nowrap transition-colors hover:bg-ink hover:text-ground sm:px-3.5"
-          >
-            <span className="sm:hidden">Siguiente</span>
-            <span className="hidden sm:inline">Siguiente: sistema</span>
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onGenerate}
+              aria-label="Generar paleta"
+              title="Generar paleta (Espacio)"
+              className="group inline-flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-signal text-sm font-bold text-ink whitespace-nowrap transition-transform active:scale-[0.97] sm:w-auto sm:pl-3.5 sm:pr-2.5"
+            >
+              <Shuffle className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:rotate-180" />
+              <span className="hidden sm:inline">Generar</span>
+              <kbd className="hidden rounded-md bg-ink/12 px-1.5 py-0.5 text-[11px] font-medium sm:inline">
+                Espacio
+              </kbd>
+            </button>
+            <button
+              type="button"
+              onClick={onContinue}
+              aria-label="Siguiente: sistema"
+              className="group inline-flex h-10 shrink-0 items-center gap-2 rounded-lg border border-ink px-3 text-sm font-semibold whitespace-nowrap transition-colors hover:bg-ink hover:text-ground sm:px-3.5"
+            >
+              <span className="sm:hidden">Siguiente</span>
+              <span className="hidden sm:inline">Siguiente: sistema</span>
+              <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </div>
         </div>
       </div>
 

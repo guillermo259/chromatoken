@@ -64,10 +64,12 @@ export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
           <button
             type="button"
             onClick={onContinue}
+            aria-label="Siguiente: exportar"
             className="group inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-ink px-3 text-[13px] font-semibold transition-colors hover:bg-ink hover:text-ground"
           >
-            Siguiente: exportar
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            <span className="sm:hidden">Exportar</span>
+            <span className="hidden sm:inline">Siguiente: exportar</span>
+            <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
       </div>
