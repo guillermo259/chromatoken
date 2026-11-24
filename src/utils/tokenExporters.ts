@@ -474,7 +474,7 @@ export function generateDesignTokenMd(state: DesignTokenState): string {
     state.typography.monoFont
   );
 
-  return `# ${state.brandName || 'Design System'} — designtoken.md
+  return `# ${state.brandName || 'Design System'} — tokens.md
 
 > Especificación de tokens de diseño lista para desarrollo web y agentes de código (nivel objetivo: WCAG 2.2 ${state.contrastLevel}).
 

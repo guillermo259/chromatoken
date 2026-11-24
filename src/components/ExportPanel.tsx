@@ -70,10 +70,10 @@ const FORMATS: ExportFormat[] = [
   {
     id: 'markdown',
     group: 'code',
-    label: 'designtoken.md',
+    label: 'tokens.md',
     name: 'Documento Markdown',
     useFor: 'Especificación legible para el equipo o para agentes de código.',
-    build: single('designtoken.md', 'text/markdown', generateDesignTokenMd),
+    build: single('tokens.md', 'text/markdown', generateDesignTokenMd),
   },
   {
     id: 'figma',

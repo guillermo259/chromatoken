@@ -93,7 +93,7 @@ El texto necesita **4.5:1** en nivel AA y **7:1** en nivel AAA. Los elementos de
 ### 3 · Exportar
 
 <p align="center">
-  <img src="docs/assets/export.png" alt="Paso Exportar: lista de formatos y visor de código" width="100%">
+  <img src="docs/assets/export.png" alt="Paso Exportar: formatos para código y para Figma, guía de importación y visor de código" width="100%">
 </p>
 
 | Archivo | Para qué sirve |
@@ -101,7 +101,7 @@ El texto necesita **4.5:1** en nivel AA y **7:1** en nivel AAA. Los elementos de
 | `tokens.css` | Variables CSS con `:root`, `.dark` y la importación de Google Fonts |
 | `tailwind-theme.css` | Bloque `@theme` para Tailwind CSS v4 |
 | `tokens.json` | Formato W3C Design Tokens (Style Dictionary) |
-| `designtoken.md` | Especificación legible para el equipo o para agentes de código, con la tabla de contraste |
+| `tokens.md` | Especificación legible para el equipo o para agentes de código, con la tabla de contraste |
 | `Light.json` + `Dark.json` | Variables nativas de Figma con modos claro/oscuro y alias a la paleta |
 | `tokens-studio.json` | Paquete completo para Tokens Studio (variables, tipografías compuestas y sombras) |
 
